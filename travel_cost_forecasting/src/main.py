@@ -4,18 +4,18 @@ from sklearn.model_selection import train_test_split
 import argparse
 import os
 
-def main():
-    """
-    Main function to run the travel cost forecasting model.
-    """
+def parse_arguments():
+    """Parses command-line arguments for forecasting."""
     parser = argparse.ArgumentParser(description='Travel Cost Forecasting')
     parser.add_argument('--home_country', type=str, help='Home country code (e.g., US)')
     parser.add_argument('--dest_country', type=str, help='Destination country code (e.g., CN)')
     parser.add_argument('--num_days', type=int, help='Number of days for the trip')
     parser.add_argument('--month', type=int, help='Month of the trip (1-12)')
     parser.add_argument('--year', type=int, default=2025, help='Year of the trip')
-    args = parser.parse_args()
+    return parser.parse_args()
 
+def train_and_evaluate_model():
+    """Loads data, trains the model, and evaluates it."""
     # Get the absolute path to the data files
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
@@ -42,6 +42,15 @@ def main():
         print(f'MSE: {mse}')
     else:
         print("Test data is empty, skipping evaluation.")
+
+    return prophet_model, lstm_model, scaler, train_data
+
+def main():
+    """
+    Main function to run the travel cost forecasting model from the command line.
+    """
+    args = parse_arguments()
+    prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()
 
     # Forecast cost
     if args.home_country and args.dest_country and args.num_days and args.month:

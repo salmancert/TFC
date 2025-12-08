@@ -1,3 +1,3 @@
-[2025-12-08 10:43:55 +0000] [18227] [INFO] Starting gunicorn 23.0.0
-[2025-12-08 10:43:55 +0000] [18227] [ERROR] Connection in use: ('0.0.0.0', 5000)
-[2025-12-08 10:43:55 +0000] [18227] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 98] Address already in use
+[2025-12-08 12:54:12 +0000] [21920] [INFO] Starting gunicorn 23.0.0
+[2025-12-08 12:54:12 +0000] [21920] [INFO] Listening at: http://0.0.0.0:5000 (21920)
+[2025-12-08 12:54:12 +0000] [21920] [INFO] Using worker: sync

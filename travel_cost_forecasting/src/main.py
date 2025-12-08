@@ -3,6 +3,7 @@ from travel_cost_forecasting.src.model import train_hybrid_model, evaluate_model
 from sklearn.model_selection import train_test_split
 import argparse
 import os
+import pickle
 
 def parse_arguments():
     """Parses command-line arguments for forecasting."""
@@ -15,12 +16,16 @@ def parse_arguments():
     return parser.parse_args()
 
 def train_and_evaluate_model():
-    """Loads data, trains the model, and evaluates it."""
-    # Get the absolute path to the data files
+    """Loads data, trains the model, evaluates it, and saves the trained model."""
+    # Get the absolute path to the data and model files
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
+    models_dir = os.path.join(script_dir, '..', 'models')
+    os.makedirs(models_dir, exist_ok=True) # Ensure models directory exists
+
     travel_data_path = os.path.join(data_dir, 'travel_data.csv')
     daily_allowance_path = os.path.join(data_dir, 'daily_allowance.xlsx')
+    model_path = os.path.join(models_dir, 'trained_model.pkl')
 
     # Load data
     travel_data = load_travel_data(travel_data_path)
@@ -42,6 +47,16 @@ def train_and_evaluate_model():
         print(f'MSE: {mse}')
     else:
         print("Test data is empty, skipping evaluation.")
+
+    # Save the trained model objects to a file
+    with open(model_path, 'wb') as f:
+        pickle.dump({
+            'prophet_model': prophet_model,
+            'lstm_model': lstm_model,
+            'scaler': scaler,
+            'train_data': train_data
+        }, f)
+    print(f"Model saved to {model_path}")
 
     return prophet_model, lstm_model, scaler, train_data
 

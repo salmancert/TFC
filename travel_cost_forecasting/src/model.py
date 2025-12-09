@@ -5,7 +5,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from sklearn.metrics import mean_squared_error
 import numpy as np
-from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES
+from .data_processing import ALL_COUNTRIES
 
 SEQUENCE_LENGTH = 60
 

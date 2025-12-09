@@ -15,7 +15,7 @@ def create_app():
 
     # Define the path for the cached model
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(script_dir, 'models', 'trained_model.pkl')
+    model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
 
     def load_or_train_model():
         """Loads a pre-trained model or trains a new one."""

@@ -1,5 +1,5 @@
-from travel_cost_forecasting.src.data_processing import load_travel_data, load_daily_allowance, preprocess_data
-from travel_cost_forecasting.src.model import train_hybrid_model, evaluate_model, forecast_cost
+from .data_processing import load_travel_data, load_daily_allowance, preprocess_data
+from .model import train_hybrid_model, evaluate_model, forecast_cost
 from sklearn.model_selection import train_test_split
 import argparse
 import os

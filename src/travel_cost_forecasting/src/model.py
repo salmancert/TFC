@@ -151,14 +151,30 @@ def _create_future_df(home_country, dest_country, num_days, month, year=2025):
 
 def forecast_cost(prophet_model, lstm_model, scaler, train_data, home_country, dest_country, num_days, month, year):
     """
-    Forecasts the travel cost for a given trip.
+    Forecasts the travel cost for a given trip and returns a cost breakdown.
     """
     future_df = _create_future_df(home_country, dest_country, num_days, month, year)
 
     prophet_prediction = prophet_model.predict(future_df)['yhat'].values[0]
 
     if lstm_model is None:
-        return prophet_prediction
+        # Calculate historical proportions
+        proportions = {
+            'air_ticket': train_data['y_air_ticket'].sum() / train_data['y'].sum(),
+            'hotel': train_data['y_hotel'].sum() / train_data['y'].sum(),
+            'daily_allowance': train_data['y_daily_allowance'].sum() / train_data['y'].sum(),
+            'others': train_data['y_others'].sum() / train_data['y'].sum()
+        }
+
+        # Apply proportions to the prediction
+        breakdown = {
+            'Air Ticket': prophet_prediction * proportions['air_ticket'],
+            'Accommodation': prophet_prediction * proportions['hotel'],
+            'Daily Allowance': prophet_prediction * proportions['daily_allowance'],
+            'Others': prophet_prediction * proportions['others']
+        }
+
+        return prophet_prediction, breakdown, prophet_prediction, 0
 
     features = ['y'] + [col for col in train_data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
     train_features = train_data[features]
@@ -182,4 +198,20 @@ def forecast_cost(prophet_model, lstm_model, scaler, train_data, home_country, d
 
     hybrid_prediction = (prophet_prediction + lstm_prediction) / 2
 
-    return hybrid_prediction
+    # Calculate historical proportions
+    proportions = {
+        'air_ticket': train_data['y_air_ticket'].sum() / train_data['y'].sum(),
+        'hotel': train_data['y_hotel'].sum() / train_data['y'].sum(),
+        'daily_allowance': train_data['y_daily_allowance'].sum() / train_data['y'].sum(),
+        'others': train_data['y_others'].sum() / train_data['y'].sum()
+    }
+
+    # Apply proportions to the hybrid prediction
+    breakdown = {
+        'Air Ticket': hybrid_prediction * proportions['air_ticket'],
+        'Accommodation': hybrid_prediction * proportions['hotel'],
+        'Daily Allowance': hybrid_prediction * proportions['daily_allowance'],
+        'Others': hybrid_prediction * proportions['others']
+    }
+
+    return hybrid_prediction, breakdown, prophet_prediction, lstm_prediction

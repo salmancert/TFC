@@ -1,14 +1,22 @@
 import pandas as pd
 
-ALL_COUNTRIES = [
-    'AE', 'AR', 'AT', 'AU', 'BA', 'BD', 'BE', 'BG', 'BH', 'BR', 'BY',
-    'CA', 'CH', 'CL', 'CN', 'CO', 'CR', 'CZ', 'DE', 'DK', 'DO', 'DZ',
-    'EC', 'EG', 'ES', 'FI', 'FR', 'GB', 'GR', 'GT', 'HR', 'HU', 'ID',
-    'IE', 'IN', 'IT', 'JP', 'KE', 'KR', 'KZ', 'LK', 'LT', 'LU', 'LV',
-    'MA', 'MC', 'MM', 'MX', 'MY', 'NG', 'NL', 'NO', 'NZ', 'OM', 'PA',
-    'PE', 'PH', 'PK', 'PL', 'PT', 'PY', 'RO', 'RS', 'RU', 'SA', 'SE',
-    'SG', 'SI', 'SK', 'TH', 'TN', 'TR', 'TW', 'US', 'UY', 'VN', 'ZA'
-]
+COUNTRY_CODES = {
+    'AE': 'United Arab Emirates', 'AR': 'Argentina', 'AT': 'Austria', 'AU': 'Australia', 'BA': 'Bosnia and Herzegovina',
+    'BD': 'Bangladesh', 'BE': 'Belgium', 'BG': 'Bulgaria', 'BH': 'Bahrain', 'BR': 'Brazil', 'BY': 'Belarus',
+    'CA': 'Canada', 'CH': 'Switzerland', 'CL': 'Chile', 'CN': 'China', 'CO': 'Colombia', 'CR': 'Costa Rica',
+    'CZ': 'Czech Republic', 'DE': 'Germany', 'DK': 'Denmark', 'DO': 'Dominican Republic', 'DZ': 'Algeria',
+    'EC': 'Ecuador', 'EG': 'Egypt', 'ES': 'Spain', 'FI': 'Finland', 'FR': 'France', 'GB': 'United Kingdom',
+    'GR': 'Greece', 'GT': 'Guatemala', 'HR': 'Croatia', 'HU': 'Hungary', 'ID': 'Indonesia', 'IE': 'Ireland',
+    'IN': 'India', 'IT': 'Italy', 'JP': 'Japan', 'KE': 'Kenya', 'KR': 'South Korea', 'KZ': 'Kazakhstan',
+    'LK': 'Sri Lanka', 'LT': 'Lithuania', 'LU': 'Luxembourg', 'LV': 'Latvia', 'MA': 'Morocco', 'MC': 'Monaco',
+    'MM': 'Myanmar', 'MX': 'Mexico', 'MY': 'Malaysia', 'NG': 'Nigeria', 'NL': 'Netherlands', 'NO': 'Norway',
+    'NZ': 'New Zealand', 'OM': 'Oman', 'PA': 'Panama', 'PE': 'Peru', 'PH': 'Philippines', 'PK': 'Pakistan',
+    'PL': 'Poland', 'PT': 'Portugal', 'PY': 'Paraguay', 'RO': 'Romania', 'RS': 'Serbia', 'RU': 'Russia',
+    'SA': 'Saudi Arabia', 'SE': 'Sweden', 'SG': 'Singapore', 'SI': 'Slovenia', 'SK': 'Slovakia', 'TH': 'Thailand',
+    'TN': 'Tunisia', 'TR': 'Turkey', 'TW': 'Taiwan', 'US': 'United States', 'UY': 'Uruguay', 'VN': 'Vietnam', 'ZA': 'South Africa'
+}
+
+ALL_COUNTRIES = sorted(COUNTRY_CODES.keys())
 
 def load_travel_data(filepath):
     """

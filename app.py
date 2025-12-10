@@ -1,20 +1,21 @@
 from flask import Flask, render_template, request
-from travel_cost_forecasting.main import train_and_evaluate_model
-from travel_cost_forecasting.model import forecast_cost
-from travel_cost_forecasting.data_processing import ALL_COUNTRIES, COUNTRY_CODES
+from travel_cost_forecasting.src.main import train_and_evaluate_model
+from travel_cost_forecasting.src.model import forecast_cost
+from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES
 import calendar
 import threading
 import pickle
 import os
 import argparse
 
+# Define the path for the cached model at the module level
+script_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
+
 def create_app(**kwargs):
     app = Flask(__name__, template_folder='travel_cost_forecasting/templates', static_folder='travel_cost_forecasting/static')
 
     # --- Model Loading and Training ---
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
-
     if not os.path.exists(model_path):
         print("No cached model found. Training a new model...")
         prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()

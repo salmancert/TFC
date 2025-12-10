@@ -28,7 +28,7 @@ def load_daily_allowance(filepath):
     """
     Loads daily allowance data from an Excel file.
     """
-    return pd.read_excel(filepath)
+    return pd.read_excel(filepath, engine='openpyxl')
 
 def preprocess_data(travel_data, daily_allowance_data):
     """

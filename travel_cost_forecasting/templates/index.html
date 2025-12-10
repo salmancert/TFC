@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelCast Pro - Trip Cost Estimator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            TravelCast Pro
+            <div class="logo-subtext">Local Forecasting Engine</div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        {% if model_ready %}
+            <div class="left-panel">
+                <div class="card">
+                    <h3>Trip Parameters</h3>
+                    <form action="/predict" method="post">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="home_country">Home Country</label>
+                                <select id="home_country" name="home_country">
+                                    {% for country_code in countries %}
+                                        <option value="{{ country_code }}">{{ country_names[country_code] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dest_country">Destination</label>
+                                <select id="dest_country" name="dest_country">
+                                    {% for country_code in countries %}
+                                        <option value="{{ country_code }}">{{ country_names[country_code] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="num_days">Duration (Days)</label>
+                                <input type="number" id="num_days" name="num_days" min="1" required value="7">
+                            </div>
+                            <div class="form-group">
+                                <label for="month">Travel Month</label>
+                                <select id="month" name="month">
+                                    {% for month in months %}
+                                        <option value="{{ loop.index }}">{{ month }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                         <input type="hidden" id="year" name="year" value="2025">
+                        <button type="submit" class="btn">Generate Forecast</button>
+                    </form>
+                </div>
+
+                <div class="card info-card">
+                    <h3>Model Architecture</h3>
+                    <ul>
+                        <li><strong>Prophet:</strong> Captures linear growth and seasonal travel spikes.</li>
+                        <li><strong>LSTM:</strong> Neural network trained on residuals to correct non-linear anomalies.</li>
+                        <li><strong>Allowance:</strong> Static lookup from local Excel database.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                {% if prediction %}
+                    <h2>Forecasted Cost</h2>
+                    <h1>&euro;{{ prediction | round(2) }}</h1>
+
+                    {% if breakdown %}
+                    <div class="cost-breakdown">
+                        <h3>Cost Breakdown</h3>
+                        <ul>
+                            {% for item, cost in breakdown.items() %}
+                            <li>{{ item }}: &euro;{{ cost | round(2) }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if graph_data %}
+                    <div id="cost-chart" style="width:100%;max-width:700px"></div>
+                    <script>
+                        var trace1 = {
+                            x: ['Prophet', 'LSTM', 'Total'],
+                            y: [{{ graph_data.prophet_pred }}, {{ graph_data.lstm_pred }}, {{ graph_data.total_pred }}],
+                            name: 'Predictions',
+                            type: 'bar'
+                        };
+
+                        var data = [trace1];
+                        var layout = {
+                            title: 'Model Predictions',
+                            barmode: 'group'
+                        };
+
+                        Plotly.newPlot('cost-chart', data, layout);
+                    </script>
+                    {% endif %}
+                {% else %}
+                    <div class="placeholder">
+                        <div class="icon">&#128202;</div>
+                        <h2>Ready to Forecast</h2>
+                        <p>Enter your trip details on the left and click "Generate Forecast" to run the local Prophet/LSTM engine.</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="right-panel" style="width: 100%; text-align: center;">
+                <h2>Model is Training...</h2>
+                <p>The forecasting model is being trained. Please wait a few moments and then refresh the page.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

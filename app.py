@@ -1,20 +1,21 @@
 from flask import Flask, render_template, request
 from travel_cost_forecasting.src.main import train_and_evaluate_model
 from travel_cost_forecasting.src.model import forecast_cost
-from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES
+from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES, load_daily_allowance
 import calendar
 import os
 import pickle
 import argparse
 
-# Define the path for the cached model
+# Define paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
+allowance_path = os.path.join(script_dir, 'travel_cost_forecasting', 'data', 'daily_allowance.xlsx')
 
 def create_app(**kwargs):
     app = Flask(__name__, template_folder='travel_cost_forecasting/templates', static_folder='travel_cost_forecasting/static')
 
-    # --- Model Loading and Training ---
+    # --- Model and Data Loading ---
     if not os.path.exists(model_path):
         print("No cached model found. Training a new model...")
         models, train_data = train_and_evaluate_model()
@@ -32,6 +33,12 @@ def create_app(**kwargs):
 
     app.models = model_data['models']
     app.train_data = model_data['train_data']
+
+    # Load daily allowance data
+    print(f"Loading daily allowance data from {allowance_path}...")
+    app.daily_allowance_data = load_daily_allowance(allowance_path)
+    print("Daily allowance data loaded.")
+
     app.model_ready = True
     print("Model loaded successfully.")
 
@@ -55,6 +62,7 @@ def create_app(**kwargs):
         total_cost, breakdown, prophet_pred, lstm_pred = forecast_cost(
             app.models,
             app.train_data,
+            app.daily_allowance_data,
             home_country,
             dest_country,
             num_days,

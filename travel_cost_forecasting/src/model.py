@@ -138,13 +138,15 @@ def forecast_with_llm(train_data, home_country, dest_country, num_days, month, y
                 f"  - Others: €{row['y_others']:.2f}\n"
             )
 
+    season = "peak season" if month in [6, 7, 8, 12] else "off-peak season"
+
     prompt = (
         "You are a travel cost forecasting expert. Based on the examples below, predict the cost breakdown for the upcoming trip. "
         "Provide your answer *only* in the format 'Category: €Amount'.\n\n"
         "--- Examples ---\n"
         f"{prompt_examples}\n"
         "--- Predict This Trip ---\n"
-        f"Trip from {home_country} to {dest_country} for {num_days} days in month {month} of {year}:\n"
+        f"Trip from {home_country} to {dest_country} for {num_days} days in month {month} of {year} ({season}):\n"
         "Your prediction:\n"
     )
 
@@ -182,17 +184,19 @@ def forecast_with_llm(train_data, home_country, dest_country, num_days, month, y
 
     return breakdown
 
-def forecast_cost(models, train_data, home_country, dest_country, num_days, month, year, model_choice='hybrid'):
+def forecast_cost(models, train_data, daily_allowance_data, home_country, dest_country, num_days, month, year, model_choice='hybrid'):
     """
     Forecasts the travel cost for a given trip based on the selected model and returns a cost breakdown.
     """
+    # Calculate daily allowance from the lookup table
+    allowance_rate = daily_allowance_data.loc[daily_allowance_data['Country'] == dest_country, 'Daily_Allowance'].values[0]
+    daily_allowance = allowance_rate * num_days
 
     if model_choice == 'llm':
         llm_breakdown = forecast_with_llm(train_data, home_country, dest_country, num_days, month, year)
         if 'Error' in llm_breakdown:
             return 0, llm_breakdown, 0, 0
 
-        daily_allowance = 80 * num_days  # Placeholder
         llm_breakdown['Daily Allowance'] = daily_allowance
         total_cost = sum(llm_breakdown.values())
         return total_cost, llm_breakdown, 0, 0
@@ -230,8 +234,6 @@ def forecast_cost(models, train_data, home_country, dest_country, num_days, mont
         else:
             hybrid_predictions[target] = prophet_prediction
 
-    daily_allowance = 80 * num_days # Placeholder value
-
     breakdown = {
         'Air Ticket': hybrid_predictions.get('y_air_ticket', 0),
         'Accommodation': hybrid_predictions.get('y_hotel', 0),
@@ -242,9 +244,9 @@ def forecast_cost(models, train_data, home_country, dest_country, num_days, mont
     if model_choice == 'ensemble':
         llm_breakdown = forecast_with_llm(train_data, home_country, dest_country, num_days, month, year)
         if 'Error' not in llm_breakdown:
-            breakdown['Air Ticket'] = (breakdown['Air Ticket'] + llm_breakdown['Air Ticket']) / 2
-            breakdown['Accommodation'] = (breakdown['Accommodation'] + llm_breakdown['Accommodation']) / 2
-            breakdown['Others'] = (breakdown['Others'] + llm_breakdown['Others']) / 2
+            breakdown['Air Ticket'] = 0.7 * breakdown['Air Ticket'] + 0.3 * llm_breakdown['Air Ticket']
+            breakdown['Accommodation'] = 0.7 * breakdown['Accommodation'] + 0.3 * llm_breakdown['Accommodation']
+            breakdown['Others'] = 0.7 * breakdown['Others'] + 0.3 * llm_breakdown['Others']
 
     total_cost = sum(breakdown.values())
 

@@ -50,6 +50,7 @@ def create_app(**kwargs):
         num_days = int(request.form['num_days'])
         month = int(request.form['month'])
         year = int(request.form['year'])
+        model_choice = request.form['model_choice']
 
         total_cost, breakdown, prophet_pred, lstm_pred = forecast_cost(
             app.models,
@@ -58,7 +59,8 @@ def create_app(**kwargs):
             dest_country,
             num_days,
             month,
-            year
+            year,
+            model_choice
         )
 
         month_names = list(calendar.month_name)[1:]

@@ -1,0 +1,481 @@
+2025-12-11 03:30:29.987469: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+2025-12-11 03:30:30.067508: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-12-11 03:30:32.088738: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+03:30:33 - cmdstanpy - INFO - Chain [1] start processing
+03:30:33 - cmdstanpy - INFO - Chain [1] done processing
+2025-12-11 03:30:33.652207: E external/local_xla/xla/stream_executor/cuda/cuda_platform.cc:51] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+No cached model found. Training a new model...
+--- Training model for y_hotel ---
+Epoch 1/50
+100/100 - 5s - 46ms/step - loss: 0.0491
+Epoch 2/50
+100/100 - 2s - 22ms/step - loss: 0.0440
+Epoch 3/50
+100/100 - 2s - 22ms/step - loss: 0.0401
+Epoch 4/50
+100/100 - 2s - 22ms/step - loss: 0.0386
+Epoch 5/50
+100/100 - 2s - 22ms/step - loss: 0.0353
+Epoch 6/50
+100/100 - 2s - 22ms/step - loss: 0.0330
+Epoch 7/50
+100/100 - 2s - 22ms/step - loss: 0.0312
+Epoch 8/50
+100/100 - 3s - 27ms/step - loss: 0.0244
+Epoch 9/50
+100/100 - 3s - 26ms/step - loss: 0.0218
+Epoch 10/50
+100/100 - 3s - 26ms/step - loss: 0.0173
+Epoch 11/50
+100/100 - 2s - 23ms/step - loss: 0.0123
+Epoch 12/50
+100/100 - 2s - 22ms/step - loss: 0.0093
+Epoch 13/50
+100/100 - 2s - 22ms/step - loss: 0.0060
+Epoch 14/50
+100/100 - 2s - 22ms/step - loss: 0.0051
+Epoch 15/50
+100/100 - 2s - 22ms/step - loss: 0.0041
+Epoch 16/50
+100/100 - 2s - 22ms/step - loss: 0.0028
+Epoch 17/50
+100/100 - 2s - 22ms/step - loss: 0.0020
+Epoch 18/50
+100/100 - 3s - 25ms/step - loss: 0.0014
+Epoch 19/50
+100/100 - 2s - 22ms/step - loss: 0.0011
+Epoch 20/50
+100/100 - 2s - 22ms/step - loss: 5.1656e-04
+Epoch 21/50
+100/100 - 2s - 22ms/step - loss: 3.6764e-04
+Epoch 22/50
+100/100 - 2s - 22ms/step - loss: 3.8987e-04
+Epoch 23/50
+100/100 - 2s - 22ms/step - loss: 3.6721e-04
+Epoch 24/50
+100/100 - 2s - 22ms/step - loss: 3.3424e-04
+Epoch 25/50
+100/100 - 2s - 22ms/step - loss: 3.2908e-04
+Epoch 26/50
+100/100 - 2s - 22ms/step - loss: 2.7009e-04
+Epoch 27/50
+100/100 - 2s - 22ms/step - loss: 2.3818e-04
+Epoch 28/50
+100/100 - 2s - 22ms/step - loss: 2.9864e-04
+Epoch 29/50
+100/100 - 2s - 21ms/step - loss: 5.0918e-04
+Epoch 30/50
+100/100 - 2s - 22ms/step - loss: 9.9434e-04
+Epoch 31/50
+100/100 - 2s - 22ms/step - loss: 6.1225e-04
+Epoch 32/50
+100/100 - 2s - 22ms/step - loss: 5.1873e-04
+Epoch 33/50
+100/100 - 2s - 22ms/step - loss: 0.0010
+Epoch 34/50
+100/100 - 2s - 21ms/step - loss: 0.0013
+Epoch 35/50
+100/100 - 2s - 22ms/step - loss: 0.0013
+Epoch 36/50
+100/100 - 2s - 22ms/step - loss: 9.8152e-04
+Epoch 37/50
+100/100 - 2s - 23ms/step - loss: 8.8939e-04
+Epoch 38/50
+100/100 - 2s - 23ms/step - loss: 6.1451e-04
+Epoch 39/50
+100/100 - 2s - 22ms/step - loss: 5.6172e-04
+Epoch 40/50
+100/100 - 2s - 21ms/step - loss: 2.8597e-04
+Epoch 41/50
+100/100 - 2s - 21ms/step - loss: 2.1352e-04
+Epoch 42/50
+100/100 - 3s - 32ms/step - loss: 3.4702e-04
+Epoch 43/50
+100/100 - 4s - 36ms/step - loss: 3.9487e-04
+Epoch 44/50
+100/100 - 2s - 21ms/step - loss: 5.5166e-04
+Epoch 45/50
+100/100 - 2s - 22ms/step - loss: 0.0011
+Epoch 46/50
+100/100 - 2s - 22ms/step - loss: 0.0015
+Epoch 47/50
+100/100 - 2s - 22ms/step - loss: 0.0013
+Epoch 48/50
+100/100 - 2s - 22ms/step - loss: 0.0014
+Epoch 49/50
+100/100 - 2s - 22ms/step - loss: 9.0219e-04
+Epoch 50/50
+100/100 - 2s - 22ms/step - loss: 7.5745e-04
+03:32:29 - cmdstanpy - INFO - Chain [1] start processing
+03:32:30 - cmdstanpy - INFO - Chain [1] done processing
+--- Training model for y_air_ticket ---
+Epoch 1/50
+100/100 - 5s - 49ms/step - loss: 0.0555
+Epoch 2/50
+100/100 - 2s - 22ms/step - loss: 0.0486
+Epoch 3/50
+100/100 - 2s - 22ms/step - loss: 0.0481
+Epoch 4/50
+100/100 - 2s - 22ms/step - loss: 0.0425
+Epoch 5/50
+100/100 - 2s - 22ms/step - loss: 0.0397
+Epoch 6/50
+100/100 - 2s - 25ms/step - loss: 0.0387
+Epoch 7/50
+100/100 - 2s - 21ms/step - loss: 0.0356
+Epoch 8/50
+100/100 - 2s - 22ms/step - loss: 0.0322
+Epoch 9/50
+100/100 - 2s - 21ms/step - loss: 0.0270
+Epoch 10/50
+100/100 - 2s - 21ms/step - loss: 0.0220
+Epoch 11/50
+100/100 - 2s - 21ms/step - loss: 0.0182
+Epoch 12/50
+100/100 - 2s - 21ms/step - loss: 0.0164
+Epoch 13/50
+100/100 - 2s - 21ms/step - loss: 0.0102
+Epoch 14/50
+100/100 - 2s - 21ms/step - loss: 0.0093
+Epoch 15/50
+100/100 - 2s - 21ms/step - loss: 0.0073
+Epoch 16/50
+100/100 - 2s - 22ms/step - loss: 0.0056
+Epoch 17/50
+100/100 - 2s - 22ms/step - loss: 0.0043
+Epoch 18/50
+100/100 - 2s - 22ms/step - loss: 0.0038
+Epoch 19/50
+100/100 - 2s - 22ms/step - loss: 0.0030
+Epoch 20/50
+100/100 - 2s - 22ms/step - loss: 0.0025
+Epoch 21/50
+100/100 - 2s - 22ms/step - loss: 0.0018
+Epoch 22/50
+100/100 - 2s - 22ms/step - loss: 0.0015
+Epoch 23/50
+100/100 - 2s - 22ms/step - loss: 0.0016
+Epoch 24/50
+100/100 - 2s - 22ms/step - loss: 0.0012
+Epoch 25/50
+100/100 - 2s - 22ms/step - loss: 8.9863e-04
+Epoch 26/50
+100/100 - 2s - 22ms/step - loss: 5.6095e-04
+Epoch 27/50
+100/100 - 2s - 22ms/step - loss: 4.4620e-04
+Epoch 28/50
+100/100 - 2s - 21ms/step - loss: 6.7443e-04
+Epoch 29/50
+100/100 - 2s - 21ms/step - loss: 0.0014
+Epoch 30/50
+100/100 - 2s - 22ms/step - loss: 0.0015
+Epoch 31/50
+100/100 - 2s - 22ms/step - loss: 0.0011
+Epoch 32/50
+100/100 - 2s - 22ms/step - loss: 0.0013
+Epoch 33/50
+100/100 - 2s - 22ms/step - loss: 0.0010
+Epoch 34/50
+100/100 - 2s - 22ms/step - loss: 7.1825e-04
+Epoch 35/50
+100/100 - 2s - 22ms/step - loss: 5.4715e-04
+Epoch 36/50
+100/100 - 2s - 21ms/step - loss: 3.9345e-04
+Epoch 37/50
+100/100 - 2s - 21ms/step - loss: 3.4072e-04
+Epoch 38/50
+100/100 - 2s - 22ms/step - loss: 3.5978e-04
+Epoch 39/50
+100/100 - 2s - 22ms/step - loss: 4.1102e-04
+Epoch 40/50
+100/100 - 2s - 22ms/step - loss: 5.5335e-04
+Epoch 41/50
+100/100 - 3s - 28ms/step - loss: 6.3717e-04
+Epoch 42/50
+100/100 - 3s - 29ms/step - loss: 8.5272e-04
+Epoch 43/50
+100/100 - 2s - 22ms/step - loss: 9.8626e-04
+Epoch 44/50
+100/100 - 2s - 22ms/step - loss: 8.7962e-04
+Epoch 45/50
+100/100 - 2s - 23ms/step - loss: 8.8414e-04
+Epoch 46/50
+100/100 - 3s - 26ms/step - loss: 0.0014
+Epoch 47/50
+100/100 - 4s - 37ms/step - loss: 0.0012
+Epoch 48/50
+100/100 - 2s - 23ms/step - loss: 0.0012
+Epoch 49/50
+100/100 - 2s - 23ms/step - loss: 0.0011
+Epoch 50/50
+100/100 - 2s - 23ms/step - loss: 0.0013
+03:34:25 - cmdstanpy - INFO - Chain [1] start processing
+03:34:26 - cmdstanpy - INFO - Chain [1] done processing
+--- Training model for y_others ---
+Epoch 1/50
+100/100 - 5s - 46ms/step - loss: 0.0691
+Epoch 2/50
+100/100 - 3s - 30ms/step - loss: 0.0600
+Epoch 3/50
+100/100 - 2s - 23ms/step - loss: 0.0556
+Epoch 4/50
+100/100 - 2s - 22ms/step - loss: 0.0494
+Epoch 5/50
+100/100 - 2s - 22ms/step - loss: 0.0487
+Epoch 6/50
+100/100 - 2s - 23ms/step - loss: 0.0447
+Epoch 7/50
+100/100 - 3s - 26ms/step - loss: 0.0462
+Epoch 8/50
+100/100 - 2s - 24ms/step - loss: 0.0443
+Epoch 9/50
+100/100 - 2s - 22ms/step - loss: 0.0401
+Epoch 10/50
+100/100 - 2s - 22ms/step - loss: 0.0356
+Epoch 11/50
+100/100 - 2s - 22ms/step - loss: 0.0324
+Epoch 12/50
+100/100 - 2s - 22ms/step - loss: 0.0247
+Epoch 13/50
+100/100 - 2s - 22ms/step - loss: 0.0169
+Epoch 14/50
+100/100 - 2s - 22ms/step - loss: 0.0141
+Epoch 15/50
+100/100 - 2s - 22ms/step - loss: 0.0094
+Epoch 16/50
+100/100 - 2s - 22ms/step - loss: 0.0060
+Epoch 17/50
+100/100 - 2s - 22ms/step - loss: 0.0042
+Epoch 18/50
+100/100 - 2s - 22ms/step - loss: 0.0033
+Epoch 19/50
+100/100 - 2s - 22ms/step - loss: 0.0020
+Epoch 20/50
+100/100 - 2s - 22ms/step - loss: 0.0014
+Epoch 21/50
+100/100 - 2s - 22ms/step - loss: 0.0016
+Epoch 22/50
+100/100 - 2s - 22ms/step - loss: 0.0011
+Epoch 23/50
+100/100 - 2s - 23ms/step - loss: 8.2801e-04
+Epoch 24/50
+100/100 - 2s - 23ms/step - loss: 4.5460e-04
+Epoch 25/50
+100/100 - 2s - 23ms/step - loss: 4.0471e-04
+Epoch 26/50
+100/100 - 2s - 22ms/step - loss: 1.9795e-04
+Epoch 27/50
+100/100 - 2s - 22ms/step - loss: 1.7851e-04
+Epoch 28/50
+100/100 - 2s - 22ms/step - loss: 1.0935e-04
+Epoch 29/50
+100/100 - 3s - 25ms/step - loss: 7.4856e-05
+Epoch 30/50
+100/100 - 3s - 30ms/step - loss: 6.9769e-05
+Epoch 31/50
+100/100 - 3s - 25ms/step - loss: 1.0166e-04
+Epoch 32/50
+100/100 - 2s - 22ms/step - loss: 1.3845e-04
+Epoch 33/50
+100/100 - 2s - 22ms/step - loss: 4.0650e-04
+Epoch 34/50
+100/100 - 2s - 23ms/step - loss: 8.1795e-04
+Epoch 35/50
+100/100 - 2s - 23ms/step - loss: 0.0017
+Epoch 36/50
+100/100 - 2s - 23ms/step - loss: 0.0022
+Epoch 37/50
+100/100 - 2s - 23ms/step - loss: 0.0015
+Epoch 38/50
+100/100 - 2s - 23ms/step - loss: 7.6294e-04
+Epoch 39/50
+100/100 - 2s - 23ms/step - loss: 6.5320e-04
+Epoch 40/50
+100/100 - 2s - 23ms/step - loss: 6.4214e-04
+Epoch 41/50
+100/100 - 2s - 22ms/step - loss: 7.0885e-04
+Epoch 42/50
+100/100 - 3s - 25ms/step - loss: 8.5959e-04
+Epoch 43/50
+100/100 - 3s - 26ms/step - loss: 8.3169e-04
+Epoch 44/50
+100/100 - 2s - 24ms/step - loss: 9.4403e-04
+Epoch 45/50
+100/100 - 2s - 23ms/step - loss: 0.0013
+Epoch 46/50
+100/100 - 2s - 22ms/step - loss: 0.0013
+Epoch 47/50
+100/100 - 2s - 22ms/step - loss: 7.0194e-04
+Epoch 48/50
+100/100 - 3s - 26ms/step - loss: 8.3822e-04
+Epoch 49/50
+100/100 - 4s - 38ms/step - loss: 0.0010
+Epoch 50/50
+100/100 - 2s - 22ms/step - loss: 0.0012
+Model evaluation would be performed here.
+Models saved to /app/travel_cost_forecasting/src/../models/trained_model.pkl
+Model training complete and cached.
+Loading model from /app/travel_cost_forecasting/models/trained_model.pkl...
+Model loaded successfully.
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.2:5000
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+2025-12-11 03:36:29.002554: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+2025-12-11 03:36:29.082956: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-12-11 03:36:31.282469: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+2025-12-11 03:36:32.028894: E external/local_xla/xla/stream_executor/cuda/cuda_platform.cc:51] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+ * Debugger is active!
+ * Debugger PIN: 132-491-319
+127.0.0.1 - - [11/Dec/2025 03:37:00] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:37:01] "GET /static/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:37:49] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:37:49] "GET /static/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:39:00] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:39:00] "GET /static/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:39:53] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:39:53] "GET /static/style.css HTTP/1.1" 200 -
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:103: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'home_{country}'] = 0
+/app/travel_cost_forecasting/src/model.py:104: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_df[f'dest_{country}'] = 0
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/prophet/forecaster.py:1275: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  df['trend'] = self.predict_trend(df)
+/app/travel_cost_forecasting/src/model.py:138: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_features.insert(0, target, 0)
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/prophet/forecaster.py:1275: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  df['trend'] = self.predict_trend(df)
+/app/travel_cost_forecasting/src/model.py:138: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_features.insert(0, target, 0)
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/prophet/forecaster.py:1275: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  df['trend'] = self.predict_trend(df)
+/app/travel_cost_forecasting/src/model.py:138: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  future_features.insert(0, target, 0)
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+127.0.0.1 - - [11/Dec/2025 03:39:57] "POST /predict HTTP/1.1" 200 -
+127.0.0.1 - - [11/Dec/2025 03:39:57] "[36mGET /static/style.css HTTP/1.1[0m" 304 -

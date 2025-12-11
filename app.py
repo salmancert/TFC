@@ -3,12 +3,11 @@ from travel_cost_forecasting.src.main import train_and_evaluate_model
 from travel_cost_forecasting.src.model import forecast_cost
 from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES
 import calendar
-import threading
-import pickle
 import os
+import pickle
 import argparse
 
-# Define the path for the cached model at the module level
+# Define the path for the cached model
 script_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
 
@@ -18,11 +17,9 @@ def create_app(**kwargs):
     # --- Model Loading and Training ---
     if not os.path.exists(model_path):
         print("No cached model found. Training a new model...")
-        prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()
+        models, train_data = train_and_evaluate_model()
         model_data = {
-            'prophet_model': prophet_model,
-            'lstm_model': lstm_model,
-            'scaler': scaler,
+            'models': models,
             'train_data': train_data
         }
         with open(model_path, 'wb') as f:
@@ -32,9 +29,8 @@ def create_app(**kwargs):
     print(f"Loading model from {model_path}...")
     with open(model_path, 'rb') as f:
         model_data = pickle.load(f)
-    app.prophet_model = model_data['prophet_model']
-    app.lstm_model = model_data['lstm_model']
-    app.scaler = model_data['scaler']
+
+    app.models = model_data['models']
     app.train_data = model_data['train_data']
     app.model_ready = True
     print("Model loaded successfully.")
@@ -56,9 +52,7 @@ def create_app(**kwargs):
         year = int(request.form['year'])
 
         total_cost, breakdown, prophet_pred, lstm_pred = forecast_cost(
-            app.prophet_model,
-            app.lstm_model,
-            app.scaler,
+            app.models,
             app.train_data,
             home_country,
             dest_country,
@@ -69,7 +63,7 @@ def create_app(**kwargs):
 
         month_names = list(calendar.month_name)[1:]
 
-        # Prepare data for Plotly graphs
+        # Prepare data for Plotly graphs (can be enhanced)
         graph_data = {
             'prophet_pred': prophet_pred,
             'lstm_pred': lstm_pred,
@@ -80,7 +74,7 @@ def create_app(**kwargs):
                                countries=ALL_COUNTRIES,
                                country_names=COUNTRY_CODES,
                                months=month_names,
-                               prediction=total_cost,
+                               prediction=round(total_cost, 2),
                                breakdown=breakdown,
                                graph_data=graph_data,
                                model_ready=app.model_ready)
@@ -91,12 +85,9 @@ if __name__ == '__main__':
     parser.add_argument('--retrain', action='store_true', help='Force retraining of the model.')
     args = parser.parse_args()
 
-    app = create_app()
-
     if args.retrain and os.path.exists(model_path):
         print(f"Retrain flag set. Deleting cached model at {model_path}...")
         os.remove(model_path)
-        # Retrain the model
-        train_and_evaluate_model()
 
+    app = create_app()
     app.run(debug=True, host='0.0.0.0')

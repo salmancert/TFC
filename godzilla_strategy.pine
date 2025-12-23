@@ -1,0 +1,106 @@
+// @version=5
+strategy("Godzilla Crypto Leverage Trading Formula", overlay=true)
+
+// User Inputs for customization
+// This section allows users to fine-tune the strategy's parameters.
+volatility_length = input.int(14, title="Volatility Length", tooltip="Lookback period for calculating volatility (ATR).")
+volume_smoothing_length = input.int(14, title="Volume Smoothing Length", tooltip="Lookback period for smoothing buy and sell volume.")
+long_threshold = input.float(0.1, title="Long Entry Threshold", tooltip="The imbalance indicator must be above this value to trigger a long entry.")
+short_threshold = input.float(-0.1, title="Short Entry Threshold", tooltip="The imbalance indicator must be below this value to trigger a short entry.")
+position_sizing_multiplier = input.float(1000, title="Position Sizing Multiplier", tooltip="Controls the base size of positions. Position size is calculated as this value divided by volatility.")
+atr_multiplier_sl = input.float(2.0, title="ATR Stop Loss Multiplier", tooltip="Stop loss distance in multiples of ATR.")
+atr_multiplier_tp = input.float(4.0, title="ATR Take Profit Multiplier", tooltip="Take profit distance in multiples of ATR.")
+
+// --- Calculations ---
+
+// P_t: Current mid-price of the crypto. Using 'close' as a proxy.
+price = close
+
+// σ_t: Forecasted volatility. Using Average True Range (ATR) as a proxy for volatility.
+// ATR is a common and robust measure of market volatility.
+volatility = ta.atr(volatility_length)
+
+// V_t^bid and V_t^ask: Total bid and ask volume.
+// Since PineScript doesn't have order book data, we create a proxy for buying and selling pressure.
+// Buy volume is the volume on bullish candles.
+buy_volume = close > open ? volume : 0
+// Sell volume is the volume on bearish candles.
+sell_volume = close < open ? volume : 0
+
+// Smooth the buy and sell volumes to get a more stable indicator of the underlying trend.
+smoothed_buy_volume = ta.sma(buy_volume, volume_smoothing_length)
+smoothed_sell_volume = ta.sma(sell_volume, volume_smoothing_length)
+
+// I_t: Imbalance indicator to determine market direction.
+// This formula measures the relative strength of buyers vs. sellers.
+denominator = smoothed_buy_volume + smoothed_sell_volume
+imbalance_indicator = denominator > 0 ? (smoothed_buy_volume - smoothed_sell_volume) / denominator : 0
+
+// --- Trading Logic ---
+
+// Determine long and short signals based on the imbalance indicator.
+// A positive value indicates stronger buying pressure.
+go_long = imbalance_indicator > long_threshold
+// A negative value indicates stronger selling pressure.
+go_short = imbalance_indicator < short_threshold
+
+// --- Position Sizing ---
+
+// Implement the concept of "leverage cap via σ_t".
+// Position size is inversely proportional to volatility.
+// When volatility is high, position size is smaller (less risk).
+// When volatility is low, position size is larger (more risk).
+// We add a guard to prevent division by zero if volatility is zero.
+position_size = volatility > 0 ? position_sizing_multiplier / volatility : 0
+
+// --- State Management for SL/TP ---
+
+// 'var' variables are initialized once and retain their values between bars.
+// We use them to store the stop loss and take profit levels calculated at the time of entry.
+var float long_stop_price = na
+var float long_take_profit_price = na
+var float short_stop_price = na
+var float short_take_profit_price = na
+
+// --- Strategy Execution ---
+
+// Long Entry Logic
+// We enter a long position only if the signal is present and we are not already in a position.
+if (go_long and strategy.position_size == 0)
+    strategy.entry("Long", strategy.long, qty=position_size)
+    // When the trade starts, calculate the fixed stop loss and take profit levels.
+    long_stop_price := close - atr_multiplier_sl * volatility
+    long_take_profit_price := close + atr_multiplier_tp * volatility
+
+// Short Entry Logic
+// We enter a short position only if the signal is present and we are not already in a position.
+if (go_short and strategy.position_size == 0)
+    strategy.entry("Short", strategy.short, qty=position_size)
+    // When the trade starts, calculate the fixed stop loss and take profit levels.
+    short_stop_price := close + atr_multiplier_sl * volatility
+    short_take_profit_price := close - atr_multiplier_tp * volatility
+
+// Exit Logic for Long Positions
+// If we are in a long position, apply the stored stop loss and take profit levels.
+if (strategy.position_size > 0)
+    strategy.exit("Exit Long", from_entry="Long", stop=long_stop_price, limit=long_take_profit_price)
+
+// Exit Logic for Short Positions
+// If we are in a short position, apply the stored stop loss and take profit levels.
+if (strategy.position_size < 0)
+    strategy.exit("Exit Short", from_entry="Short", stop=short_stop_price, limit=short_take_profit_price)
+
+// Reset SL/TP variables after a position is closed to prepare for the next trade.
+if (strategy.position_size == 0)
+    long_stop_price := na
+    long_take_profit_price := na
+    short_stop_price := na
+    short_take_profit_price := na
+
+// --- Plotting ---
+
+// Plot the imbalance indicator on the chart for visualization.
+plot(imbalance_indicator, title="Imbalance Indicator", color=color.new(color.blue, 0), linewidth=2)
+// Plot the thresholds to see when signals are triggered.
+hline(long_threshold, "Long Threshold", color=color.new(color.green, 0))
+hline(short_threshold, "Short Threshold", color=color.new(color.red, 0))

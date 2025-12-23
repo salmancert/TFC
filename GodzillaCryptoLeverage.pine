@@ -1,6 +1,6 @@
 // © jules
 //@version=5
-indicator("Godzilla Crypto Leverage", shorttitle = "GCL", overlay = true, timeframe = "")
+indicator("Godzilla Crypto Leverage", shorttitle = "GCL", overlay = true)
 
 // User Inputs
 imbalance_period = input.int(14, title="Volume Imbalance Period")
@@ -11,8 +11,8 @@ leverage_multiplier = input.float(1.0, title="Leverage Multiplier")
 buy_volume = close > open ? volume : 0
 sell_volume = close < open ? volume : 0
 
-total_buy_volume = math.sum(buy_volume, imbalance_period)
-total_sell_volume = math.sum(sell_volume, imbalance_period)
+total_buy_volume = ta.sum(buy_volume, imbalance_period)
+total_sell_volume = ta.sum(sell_volume, imbalance_period)
 
 volume_imbalance = (total_buy_volume - total_sell_volume) / (total_buy_volume + total_sell_volume)
 
@@ -29,15 +29,8 @@ suggested_leverage := math.max(1, suggested_leverage)   // Ensure leverage is at
 long_signal = ta.crossover(volume_imbalance, 0)
 short_signal = ta.crossunder(volume_imbalance, 0)
 
-if long_signal
-    label.new(bar_index, low, text="LONG\n" + str.tostring(suggested_leverage, "0.0") + "x",
-              yloc=yloc.belowbar, color=color.green, textcolor=color.white,
-              style=label.style_label_up, size=size.normal)
-
-if short_signal
-    label.new(bar_index, high, text="SHORT\n" + str.tostring(suggested_leverage, "0.0") + "x",
-              yloc=yloc.abovebar, color=color.red, textcolor=color.white,
-              style=label.style_label_down, size=size.normal)
+plotshape(long_signal, style=shape.labelup, location=location.belowbar, color=color.green, text="LONG\n" + str.tostring(suggested_leverage, "0.0") + "x", textcolor=color.white, size=size.normal)
+plotshape(short_signal, style=shape.labeldown, location=location.abovebar, color=color.red, text="SHORT\n" + str.tostring(suggested_leverage, "0.0") + "x", textcolor=color.white, size=size.normal)
 
 // Alerts
 alertcondition(long_signal, title="Long Signal", message="Godzilla Crypto: Long Signal!")

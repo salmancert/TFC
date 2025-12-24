@@ -21,11 +21,16 @@ price = close
 volatility = ta.atr(volatility_length)
 
 // V_t^bid and V_t^ask: Total bid and ask volume.
-// Since PineScript doesn't have order book data, we create a proxy for buying and selling pressure.
-// Buy volume is the volume on bullish candles.
-buy_volume = close > open ? volume : 0
-// Sell volume is the volume on bearish candles.
-sell_volume = close < open ? volume : 0
+// Since PineScript doesn't have order book data, we create a more robust proxy for buying and selling pressure.
+// This method analyzes the candle's structure to estimate the pressure.
+candle_range = high - low
+// Calculate a Buying and Selling Pressure (BSP) factor from -1 (max sell) to +1 (max buy).
+// A close near the high indicates buying pressure; a close near the low indicates selling pressure.
+buying_selling_pressure = candle_range > 0 ? (2 * close - high - low) / candle_range : 0
+
+// Distribute the total volume based on the pressure factor.
+buy_volume = volume * (1 + buying_selling_pressure) / 2
+sell_volume = volume * (1 - buying_selling_pressure) / 2
 
 // Smooth the buy and sell volumes to get a more stable indicator of the underlying trend.
 smoothed_buy_volume = ta.sma(buy_volume, volume_smoothing_length)

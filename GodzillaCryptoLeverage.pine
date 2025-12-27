@@ -1,0 +1,37 @@
+// © jules
+//@version=5
+indicator("Godzilla Crypto Leverage", shorttitle = "GCL", overlay = true)
+
+// User Inputs
+imbalance_period = input.int(14, title="Volume Imbalance Period")
+atr_period = input.int(14, title="ATR Period")
+leverage_multiplier = input.float(1.0, title="Leverage Multiplier")
+
+// Calculate Volume Imbalance
+buy_volume = close > open ? volume : 0
+sell_volume = close < open ? volume : 0
+
+total_buy_volume = ta.sum(buy_volume, imbalance_period)
+total_sell_volume = ta.sum(sell_volume, imbalance_period)
+
+volume_imbalance = (total_buy_volume - total_sell_volume) / (total_buy_volume + total_sell_volume)
+
+// Calculate Volatility
+atr_value = ta.atr(atr_period)
+normalized_atr = (atr_value / close) * 100
+
+// Suggest Leverage
+suggested_leverage = leverage_multiplier / normalized_atr
+suggested_leverage := math.min(25, suggested_leverage) // Cap leverage at 25x
+suggested_leverage := math.max(1, suggested_leverage)   // Ensure leverage is at least 1x
+
+// Plotting
+long_signal = ta.crossover(volume_imbalance, 0)
+short_signal = ta.crossunder(volume_imbalance, 0)
+
+plotshape(long_signal, style=shape.labelup, location=location.belowbar, color=color.green, text="LONG\n" + str.tostring(suggested_leverage, "0.0") + "x", textcolor=color.white, size=size.normal)
+plotshape(short_signal, style=shape.labeldown, location=location.abovebar, color=color.red, text="SHORT\n" + str.tostring(suggested_leverage, "0.0") + "x", textcolor=color.white, size=size.normal)
+
+// Alerts
+alertcondition(long_signal, title="Long Signal", message="Godzilla Crypto: Long Signal!")
+alertcondition(short_signal, title="Short Signal", message="Godzilla Crypto: Short Signal!")

@@ -16,61 +16,64 @@ def parse_arguments():
     return parser.parse_args()
 
 def train_and_evaluate_model():
-    """Loads data, trains the model, evaluates it, and saves the trained model."""
-    # Get the absolute path to the data and model files
+    """Loads data, trains the models, evaluates them, and saves the trained models."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
     models_dir = os.path.join(script_dir, '..', 'models')
-    os.makedirs(models_dir, exist_ok=True) # Ensure models directory exists
+    os.makedirs(models_dir, exist_ok=True)
 
     travel_data_path = os.path.join(data_dir, 'travel_data.csv')
     daily_allowance_path = os.path.join(data_dir, 'daily_allowance.xlsx')
     model_path = os.path.join(models_dir, 'trained_model.pkl')
 
-    # Load data
     travel_data = load_travel_data(travel_data_path)
     daily_allowance_data = load_daily_allowance(daily_allowance_path)
 
-    # Preprocess data
     data = preprocess_data(travel_data, daily_allowance_data)
 
-    # Split data into training and testing sets
     train_data, test_data = train_test_split(data, test_size=0.2, shuffle=False)
 
-    # Train hybrid model
-    prophet_model, lstm_model, scaler, _ = train_hybrid_model(train_data)
+    # Train a hybrid model for each cost category
+    models = train_hybrid_model(train_data)
 
-    # Evaluate model
     if not test_data.empty:
-        rmse, mse = evaluate_model(prophet_model, lstm_model, scaler, train_data, test_data)
-        print(f'RMSE: {rmse}')
-        print(f'MSE: {mse}')
+        rmse, mse = evaluate_model(models, train_data, test_data)
+        # print(f'Overall RMSE: {rmse}')
+        # print(f'Overall MSE: {mse}')
     else:
         print("Test data is empty, skipping evaluation.")
 
-    # Save the trained model objects to a file
+    # Save the trained models and training data to a file
     with open(model_path, 'wb') as f:
         pickle.dump({
-            'prophet_model': prophet_model,
-            'lstm_model': lstm_model,
-            'scaler': scaler,
+            'models': models,
             'train_data': train_data
         }, f)
-    print(f"Model saved to {model_path}")
+    print(f"Models saved to {model_path}")
 
-    return prophet_model, lstm_model, scaler, train_data
+    return models, train_data
 
 def main():
     """
     Main function to run the travel cost forecasting model from the command line.
     """
     args = parse_arguments()
-    prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()
+    models, train_data = train_and_evaluate_model()
 
-    # Forecast cost
     if args.home_country and args.dest_country and args.num_days and args.month:
-        cost = forecast_cost(prophet_model, lstm_model, scaler, train_data, args.home_country, args.dest_country, args.num_days, args.month, args.year)
-        print(f'Forecasted cost: {cost}')
+        total_cost, breakdown, _, _ = forecast_cost(
+            models,
+            train_data,
+            args.home_country,
+            args.dest_country,
+            args.num_days,
+            args.month,
+            args.year
+        )
+        print(f'Forecasted Total Cost: {total_cost}')
+        print('Cost Breakdown:')
+        for category, cost in breakdown.items():
+            print(f'  {category}: {cost}')
 
 if __name__ == '__main__':
     main()

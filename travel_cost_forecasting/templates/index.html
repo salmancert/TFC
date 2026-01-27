@@ -54,6 +54,16 @@
                             </div>
                         </div>
                          <input type="hidden" id="year" name="year" value="2025">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="model_choice">Forecasting Model</label>
+                                <select id="model_choice" name="model_choice">
+                                    <option value="hybrid">Hybrid (Prophet+LSTM)</option>
+                                    <option value="llm">Ollama/Foundry (LLM)</option>
+                                    <option value="ensemble">Ensemble (Hybrid + LLM)</option>
+                                </select>
+                            </div>
+                        </div>
                         <button type="submit" class="btn">Generate Forecast</button>
                     </form>
                 </div>

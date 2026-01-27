@@ -1,28 +1,26 @@
 from flask import Flask, render_template, request
 from travel_cost_forecasting.src.main import train_and_evaluate_model
 from travel_cost_forecasting.src.model import forecast_cost
-from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES
+from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES, load_daily_allowance
 import calendar
-import threading
-import pickle
 import os
+import pickle
 import argparse
 
-# Define the path for the cached model at the module level
+# Define paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
+allowance_path = os.path.join(script_dir, 'travel_cost_forecasting', 'data', 'daily_allowance.xlsx')
 
 def create_app(**kwargs):
     app = Flask(__name__, template_folder='travel_cost_forecasting/templates', static_folder='travel_cost_forecasting/static')
 
-    # --- Model Loading and Training ---
+    # --- Model and Data Loading ---
     if not os.path.exists(model_path):
         print("No cached model found. Training a new model...")
-        prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()
+        models, train_data = train_and_evaluate_model()
         model_data = {
-            'prophet_model': prophet_model,
-            'lstm_model': lstm_model,
-            'scaler': scaler,
+            'models': models,
             'train_data': train_data
         }
         with open(model_path, 'wb') as f:
@@ -32,10 +30,15 @@ def create_app(**kwargs):
     print(f"Loading model from {model_path}...")
     with open(model_path, 'rb') as f:
         model_data = pickle.load(f)
-    app.prophet_model = model_data['prophet_model']
-    app.lstm_model = model_data['lstm_model']
-    app.scaler = model_data['scaler']
+
+    app.models = model_data['models']
     app.train_data = model_data['train_data']
+
+    # Load daily allowance data
+    print(f"Loading daily allowance data from {allowance_path}...")
+    app.daily_allowance_data = load_daily_allowance(allowance_path)
+    print("Daily allowance data loaded.")
+
     app.model_ready = True
     print("Model loaded successfully.")
 
@@ -54,22 +57,23 @@ def create_app(**kwargs):
         num_days = int(request.form['num_days'])
         month = int(request.form['month'])
         year = int(request.form['year'])
+        model_choice = request.form['model_choice']
 
         total_cost, breakdown, prophet_pred, lstm_pred = forecast_cost(
-            app.prophet_model,
-            app.lstm_model,
-            app.scaler,
+            app.models,
             app.train_data,
+            app.daily_allowance_data,
             home_country,
             dest_country,
             num_days,
             month,
-            year
+            year,
+            model_choice
         )
 
         month_names = list(calendar.month_name)[1:]
 
-        # Prepare data for Plotly graphs
+        # Prepare data for Plotly graphs (can be enhanced)
         graph_data = {
             'prophet_pred': prophet_pred,
             'lstm_pred': lstm_pred,
@@ -80,7 +84,7 @@ def create_app(**kwargs):
                                countries=ALL_COUNTRIES,
                                country_names=COUNTRY_CODES,
                                months=month_names,
-                               prediction=total_cost,
+                               prediction=round(total_cost, 2),
                                breakdown=breakdown,
                                graph_data=graph_data,
                                model_ready=app.model_ready)
@@ -91,12 +95,9 @@ if __name__ == '__main__':
     parser.add_argument('--retrain', action='store_true', help='Force retraining of the model.')
     args = parser.parse_args()
 
-    app = create_app()
-
     if args.retrain and os.path.exists(model_path):
         print(f"Retrain flag set. Deleting cached model at {model_path}...")
         os.remove(model_path)
-        # Retrain the model
-        train_and_evaluate_model()
 
+    app = create_app()
     app.run(debug=True, host='0.0.0.0')

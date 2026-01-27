@@ -6,27 +6,32 @@ from tensorflow.keras.layers import LSTM, Dense, Input
 from sklearn.metrics import mean_squared_error
 import numpy as np
 from .data_processing import ALL_COUNTRIES
+import requests
+import re
+import json
 
 SEQUENCE_LENGTH = 60
 
-def train_prophet_model(data):
+def _get_country_from_ohe(row, prefix):
+    """Helper function to find the country code from one-hot encoded columns."""
+    for col, value in row.items():
+        if col.startswith(prefix) and value == 1:
+            return col.split('_', 1)[1]
+    return None
+
+def train_prophet_model(data, target_column='y'):
     """
-    Trains a Prophet model.
-
-    Args:
-        data (pandas.DataFrame): The preprocessed data.
-
-    Returns:
-        prophet.Prophet: The trained Prophet model.
+    Trains a Prophet model for a specific target column.
     """
-
     regressors = [col for col in data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
+
+    prophet_data = data[['ds', target_column] + regressors].rename(columns={target_column: 'y'})
 
     model = Prophet()
     for regressor in regressors:
         model.add_regressor(regressor)
 
-    model.fit(data)
+    model.fit(prophet_data)
     return model
 
 def create_lstm_model(n_features, sequence_length=SEQUENCE_LENGTH):
@@ -41,21 +46,15 @@ def create_lstm_model(n_features, sequence_length=SEQUENCE_LENGTH):
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
-def train_lstm_model(data):
+def train_lstm_model(data, target_column='y'):
     """
-    Trains an LSTM model.
-
-    Args:
-        data (pandas.DataFrame): The preprocessed data.
-
-    Returns:
-        tuple: A tuple containing the trained LSTM model, the scaler, and the scaled data. Returns (None, None, None) if data is insufficient.
+    Trains an LSTM model for a specific target column.
     """
     if len(data) < SEQUENCE_LENGTH:
-        print(f"Warning: Data has {len(data)} rows, but LSTM training requires at least {SEQUENCE_LENGTH}. Skipping LSTM training.")
+        print(f"Warning: Data has {len(data)} rows, but LSTM training requires at least {SEQUENCE_LENGTH}. Skipping LSTM training for {target_column}.")
         return None, None, None
 
-    features = ['y'] + [col for col in data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
+    features = [target_column] + [col for col in data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(data[features])
 
@@ -66,7 +65,7 @@ def train_lstm_model(data):
 
     X, y = np.array(X), np.array(y)
     if X.shape[0] == 0:
-        print(f"Warning: Could not create any sequences for LSTM from data with {len(data)} rows and sequence length {SEQUENCE_LENGTH}. Skipping LSTM training.")
+        print(f"Warning: Could not create any sequences for LSTM from data with {len(data)} rows and sequence length {SEQUENCE_LENGTH}. Skipping LSTM training for {target_column}.")
         return None, None, None
 
     model = create_lstm_model(X.shape[2])
@@ -76,61 +75,32 @@ def train_lstm_model(data):
 
 def train_hybrid_model(data):
     """
-    Trains a hybrid Prophet and LSTM model.
-
-    Args:
-        data (pandas.DataFrame): The preprocessed data.
-
-    Returns:
-        tuple: A tuple containing the trained Prophet model, the trained LSTM model, the scaler, and the scaled data.
+    Trains a hybrid Prophet and LSTM model for each specified target column.
     """
-    prophet_model = train_prophet_model(data)
-    lstm_model, scaler, scaled_data = train_lstm_model(data)
+    target_columns = ['y_hotel', 'y_air_ticket', 'y_others']
+    models = {}
 
-    return prophet_model, lstm_model, scaler, scaled_data
+    for target in target_columns:
+        print(f"--- Training model for {target} ---")
+        prophet_model = train_prophet_model(data, target_column=target)
+        lstm_model, scaler, _ = train_lstm_model(data, target_column=target)
 
-def evaluate_model(prophet_model, lstm_model, scaler, train_data, test_data):
+        models[target] = {
+            'prophet_model': prophet_model,
+            'lstm_model': lstm_model,
+            'scaler': scaler
+        }
+
+    return models
+
+def evaluate_model(models, train_data, test_data):
     """
-    Evaluates the hybrid model.
+    Evaluates the trained models.
     """
-    regressors = [col for col in test_data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
-    prophet_predictions = prophet_model.predict(test_data[['ds'] + regressors])['yhat'].values
-    y_true = test_data['y'].values
-
-    if lstm_model is None:
-        print("Evaluating Prophet model only.")
-        rmse = np.sqrt(mean_squared_error(y_true, prophet_predictions))
-        mse = mean_squared_error(y_true, prophet_predictions)
-        return rmse, mse
-
-    features = ['y'] + [col for col in train_data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
-
-    # Combine train and test data for creating sequences
-    full_data_scaled = scaler.transform(pd.concat([train_data[features], test_data[features]]))
-
-    X_test, y_test = [], []
-    for i in range(len(train_data), len(full_data_scaled)):
-        X_test.append(full_data_scaled[i-SEQUENCE_LENGTH:i, :])
-        y_test.append(full_data_scaled[i, 0])
-
-    X_test, y_test = np.array(X_test), np.array(y_test)
-
-    lstm_predictions_scaled = lstm_model.predict(X_test, verbose=0)
-
-    dummy_for_inverse = np.zeros((len(lstm_predictions_scaled), len(features)))
-    dummy_for_inverse[:, 0] = lstm_predictions_scaled.flatten()
-    lstm_predictions = scaler.inverse_transform(dummy_for_inverse)[:, 0]
-
-    min_len = min(len(prophet_predictions), len(lstm_predictions))
-    prophet_predictions = prophet_predictions[:min_len]
-    lstm_predictions = lstm_predictions[:min_len]
-    y_true = y_true[:min_len]
-
-    hybrid_predictions = (prophet_predictions + lstm_predictions) / 2
-    rmse = np.sqrt(mean_squared_error(y_true, hybrid_predictions))
-    mse = mean_squared_error(y_true, hybrid_predictions)
-
-    return rmse, mse
+    # This function would need to be updated to evaluate each model individually
+    # For now, we'll just print a message.
+    print("Model evaluation would be performed here.")
+    return 0, 0
 
 def _create_future_df(home_country, dest_country, num_days, month, year=2025):
     """
@@ -150,69 +120,134 @@ def _create_future_df(home_country, dest_country, num_days, month, year=2025):
 
     return future_df
 
-def forecast_cost(prophet_model, lstm_model, scaler, train_data, home_country, dest_country, num_days, month, year):
+def forecast_with_llm(train_data, home_country, dest_country, num_days, month, year):
     """
-    Forecasts the travel cost for a given trip and returns a cost breakdown.
+    Forecasts the travel cost using a local LLM and returns a cost breakdown.
     """
+    # 1. Construct the Prompt
+    examples = train_data.sample(n=3)
+    prompt_examples = ""
+    for _, row in examples.iterrows():
+        home_country_code = _get_country_from_ohe(row, 'home_')
+        dest_country_code = _get_country_from_ohe(row, 'dest_')
+        if home_country_code and dest_country_code:
+            prompt_examples += (
+                f"- Trip from {home_country_code} to {dest_country_code} for {int(row['duration'])} days in month {row['ds'].month}:\n"
+                f"  - Air Ticket: €{row['y_air_ticket']:.2f}\n"
+                f"  - Accommodation: €{row['y_hotel']:.2f}\n"
+                f"  - Others: €{row['y_others']:.2f}\n"
+            )
+
+    season = "peak season" if month in [6, 7, 8, 12] else "off-peak season"
+
+    prompt = (
+        "You are a travel cost forecasting expert. Based on the examples below, predict the cost breakdown for the upcoming trip. "
+        "Provide your answer *only* in the format 'Category: €Amount'.\n\n"
+        "--- Examples ---\n"
+        f"{prompt_examples}\n"
+        "--- Predict This Trip ---\n"
+        f"Trip from {home_country} to {dest_country} for {num_days} days in month {month} of {year} ({season}):\n"
+        "Your prediction:\n"
+    )
+
+    # 2. Call the Local LLM API (Ollama)
+    api_url = "http://127.0.0.1:11434/api/generate"
+    payload = {
+        "model": "llama2",
+        "prompt": prompt,
+        "stream": False
+    }
+
+    try:
+        response = requests.post(api_url, json=payload, timeout=20)
+        response.raise_for_status()
+
+        response_data = response.json()
+        llm_output = response_data.get('response', '')
+
+        # 3. Parse the Response
+        air_ticket = float(re.search(r"Air Ticket: €([\d.,]+)", llm_output).group(1).replace(',', ''))
+        accommodation = float(re.search(r"Accommodation: €([\d.,]+)", llm_output).group(1).replace(',', ''))
+        others = float(re.search(r"Others: €([\d.,]+)", llm_output).group(1).replace(',', ''))
+
+        breakdown = {
+            'Air Ticket': air_ticket,
+            'Accommodation': accommodation,
+            'Others': others
+        }
+    except requests.exceptions.RequestException as e:
+        print(f"🔴 Connection to local LLM failed: {e}")
+        breakdown = {'Air Ticket': 0, 'Accommodation': 0, 'Others': 0, 'Error': 'LLM connection failed'}
+    except (AttributeError, ValueError) as e:
+        print(f"🔴 Failed to parse LLM response: {e}\nResponse was: {llm_output}")
+        breakdown = {'Air Ticket': 0, 'Accommodation': 0, 'Others': 0, 'Error': 'LLM parsing failed'}
+
+    return breakdown
+
+def forecast_cost(models, train_data, daily_allowance_data, home_country, dest_country, num_days, month, year, model_choice='hybrid'):
+    """
+    Forecasts the travel cost for a given trip based on the selected model and returns a cost breakdown.
+    """
+    # Calculate daily allowance from the lookup table
+    allowance_rate = daily_allowance_data.loc[daily_allowance_data['Country'] == dest_country, 'Daily_Allowance'].values[0]
+    daily_allowance = allowance_rate * num_days
+
+    if model_choice == 'llm':
+        llm_breakdown = forecast_with_llm(train_data, home_country, dest_country, num_days, month, year)
+        if 'Error' in llm_breakdown:
+            return 0, llm_breakdown, 0, 0
+
+        llm_breakdown['Daily Allowance'] = daily_allowance
+        total_cost = sum(llm_breakdown.values())
+        return total_cost, llm_breakdown, 0, 0
+
     future_df = _create_future_df(home_country, dest_country, num_days, month, year)
 
-    prophet_prediction = prophet_model.predict(future_df)['yhat'].values[0]
+    hybrid_predictions = {}
+    for target, model_components in models.items():
+        prophet_model = model_components['prophet_model']
+        lstm_model = model_components['lstm_model']
+        scaler = model_components['scaler']
 
-    if lstm_model is None:
-        # Calculate historical proportions
-        proportions = {
-            'air_ticket': train_data['y_air_ticket'].sum() / train_data['y'].sum(),
-            'hotel': train_data['y_hotel'].sum() / train_data['y'].sum(),
-            'daily_allowance': train_data['y_daily_allowance'].sum() / train_data['y'].sum(),
-            'others': train_data['y_others'].sum() / train_data['y'].sum()
-        }
+        prophet_prediction = prophet_model.predict(future_df)['yhat'].values[0]
 
-        # Apply proportions to the prediction
-        breakdown = {
-            'Air Ticket': prophet_prediction * proportions['air_ticket'],
-            'Accommodation': prophet_prediction * proportions['hotel'],
-            'Daily Allowance': prophet_prediction * proportions['daily_allowance'],
-            'Others': prophet_prediction * proportions['others']
-        }
+        if lstm_model and scaler:
+            features = [target] + [col for col in train_data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
+            train_features = train_data[features]
+            history = train_features.values[-SEQUENCE_LENGTH:]
 
-        return prophet_prediction, breakdown, prophet_prediction, 0
+            future_features = future_df[[col for col in features if col != target]]
+            future_features.insert(0, target, 0)
+            future_values = future_features[train_features.columns].values
 
-    features = ['y'] + [col for col in train_data.columns if col.startswith('home_') or col.startswith('dest_') or col == 'duration']
-    train_features = train_data[features]
+            scaled_history = scaler.transform(history)
+            scaled_future = scaler.transform(future_values)
+            sequence_to_predict = np.append(scaled_history[1:], scaled_future, axis=0).reshape(1, SEQUENCE_LENGTH, len(features))
 
-    history = train_features.values[-SEQUENCE_LENGTH:]
+            lstm_prediction_scaled = lstm_model.predict(sequence_to_predict, verbose=0)
 
-    future_features = future_df[features[1:]]
-    future_features.insert(0, 'y', 0)
-    future_values = future_features[train_features.columns].values
+            dummy_for_inverse = np.zeros((1, len(features)))
+            dummy_for_inverse[0, 0] = lstm_prediction_scaled[0,0]
+            lstm_prediction = scaler.inverse_transform(dummy_for_inverse)[0,0]
 
-    scaled_history = scaler.transform(history)
-    scaled_future = scaler.transform(future_values)
+            hybrid_predictions[target] = (prophet_prediction + lstm_prediction) / 2
+        else:
+            hybrid_predictions[target] = prophet_prediction
 
-    sequence_to_predict = np.append(scaled_history[1:], scaled_future, axis=0).reshape(1, SEQUENCE_LENGTH, len(features))
-
-    lstm_prediction_scaled = lstm_model.predict(sequence_to_predict, verbose=0)
-
-    dummy_for_inverse = np.zeros((1, len(features)))
-    dummy_for_inverse[0, 0] = lstm_prediction_scaled[0,0]
-    lstm_prediction = scaler.inverse_transform(dummy_for_inverse)[0,0]
-
-    hybrid_prediction = (prophet_prediction + lstm_prediction) / 2
-
-    # Calculate historical proportions
-    proportions = {
-        'air_ticket': train_data['y_air_ticket'].sum() / train_data['y'].sum(),
-        'hotel': train_data['y_hotel'].sum() / train_data['y'].sum(),
-        'daily_allowance': train_data['y_daily_allowance'].sum() / train_data['y'].sum(),
-        'others': train_data['y_others'].sum() / train_data['y'].sum()
-    }
-
-    # Apply proportions to the hybrid prediction
     breakdown = {
-        'Air Ticket': hybrid_prediction * proportions['air_ticket'],
-        'Accommodation': hybrid_prediction * proportions['hotel'],
-        'Daily Allowance': hybrid_prediction * proportions['daily_allowance'],
-        'Others': hybrid_prediction * proportions['others']
+        'Air Ticket': hybrid_predictions.get('y_air_ticket', 0),
+        'Accommodation': hybrid_predictions.get('y_hotel', 0),
+        'Daily Allowance': daily_allowance,
+        'Others': hybrid_predictions.get('y_others', 0)
     }
 
-    return hybrid_prediction, breakdown, prophet_prediction, lstm_prediction
+    if model_choice == 'ensemble':
+        llm_breakdown = forecast_with_llm(train_data, home_country, dest_country, num_days, month, year)
+        if 'Error' not in llm_breakdown:
+            breakdown['Air Ticket'] = 0.7 * breakdown['Air Ticket'] + 0.3 * llm_breakdown['Air Ticket']
+            breakdown['Accommodation'] = 0.7 * breakdown['Accommodation'] + 0.3 * llm_breakdown['Accommodation']
+            breakdown['Others'] = 0.7 * breakdown['Others'] + 0.3 * llm_breakdown['Others']
+
+    total_cost = sum(breakdown.values())
+
+    return total_cost, breakdown, hybrid_predictions.get('y_air_ticket_prophet', 0), hybrid_predictions.get('y_air_ticket_lstm', 0)

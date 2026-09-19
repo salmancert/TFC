@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Trained models and collected fares are rebuilt locally from the source data.
+travel_cost_forecasting/models/*.pkl
+travel_cost_forecasting/data/fare_cache.sqlite3
+
+# Company expense data must never be committed. The sample files that ship with
+# the repository are whitelisted below; everything else in data/ stays local.
+travel_cost_forecasting/data/*
+!travel_cost_forecasting/data/travel_data.csv
+!travel_cost_forecasting/data/daily_allowance.xlsx
+
+*.log
+.DS_Store

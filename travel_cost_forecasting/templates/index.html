@@ -3,120 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TravelCast Pro - Trip Cost Estimator</title>
+    <title>Travel Cost Forecast</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
-    <header>
-        <div class="logo">
-            TravelCast Pro
-            <div class="logo-subtext">Local Forecasting Engine</div>
-        </div>
-    </header>
+<header>
+    <div class="logo">
+        Travel Cost Forecast
+        <div class="logo-subtext">Runs locally &middot; no expense data leaves this machine</div>
+    </div>
+    <div class="model-meta">
+        {% if model_info.n_trips %}
+            {{ model_info.n_trips }} trips
+            {% if model_info.data_from %}
+                &middot; {{ model_info.data_from.strftime('%b %Y') }}&ndash;{{ model_info.data_to.strftime('%b %Y') }}
+            {% endif %}
+        {% else %}
+            no training data
+        {% endif %}
+    </div>
+</header>
 
-    <div class="main-container">
-        {% if model_ready %}
-            <div class="left-panel">
-                <div class="card">
-                    <h3>Trip Parameters</h3>
-                    <form action="/predict" method="post">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="home_country">Home Country</label>
-                                <select id="home_country" name="home_country">
-                                    {% for country_code in countries %}
-                                        <option value="{{ country_code }}">{{ country_names[country_code] }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="dest_country">Destination</label>
-                                <select id="dest_country" name="dest_country">
-                                    {% for country_code in countries %}
-                                        <option value="{{ country_code }}">{{ country_names[country_code] }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="num_days">Duration (Days)</label>
-                                <input type="number" id="num_days" name="num_days" min="1" required value="7">
-                            </div>
-                            <div class="form-group">
-                                <label for="month">Travel Month</label>
-                                <select id="month" name="month">
-                                    {% for month in months %}
-                                        <option value="{{ loop.index }}">{{ month }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                         <input type="hidden" id="year" name="year" value="2025">
-                        <button type="submit" class="btn">Generate Forecast</button>
-                    </form>
-                </div>
-
-                <div class="card info-card">
-                    <h3>Model Architecture</h3>
-                    <ul>
-                        <li><strong>Prophet:</strong> Captures linear growth and seasonal travel spikes.</li>
-                        <li><strong>LSTM:</strong> Neural network trained on residuals to correct non-linear anomalies.</li>
-                        <li><strong>Allowance:</strong> Static lookup from local Excel database.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="right-panel">
-                {% if prediction %}
-                    <h2>Forecasted Cost</h2>
-                    <h1>&euro;{{ prediction | round(2) }}</h1>
-
-                    {% if breakdown %}
-                    <div class="cost-breakdown">
-                        <h3>Cost Breakdown</h3>
-                        <ul>
-                            {% for item, cost in breakdown.items() %}
-                            <li>{{ item }}: &euro;{{ cost | round(2) }}</li>
+<div class="main-container">
+    <div class="left-panel">
+        <div class="card">
+            <h3>Trip Parameters</h3>
+            {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+            <form action="/predict" method="post">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="home_country">Home Country</label>
+                        <select id="home_country" name="home_country">
+                            {% for code in countries %}
+                                <option value="{{ code }}" {% if selected and selected.home_country == code %}selected{% endif %}>{{ country_names[code] }}</option>
                             {% endfor %}
-                        </ul>
+                        </select>
                     </div>
-                    {% endif %}
+                    <div class="form-group">
+                        <label for="dest_country">Destination</label>
+                        <select id="dest_country" name="dest_country">
+                            {% for code in countries %}
+                                <option value="{{ code }}" {% if selected and selected.dest_country == code %}selected{% endif %}>{{ country_names[code] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="num_days">Duration (days)</label>
+                        <input type="number" id="num_days" name="num_days" min="1" max="365"
+                               required value="{{ selected.num_days if selected else 7 }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="month">Travel Month</label>
+                        <select id="month" name="month">
+                            {% for month in months %}
+                                <option value="{{ loop.index }}" {% if selected and selected.month == loop.index %}selected{% endif %}>{{ month }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <input type="number" id="year" name="year" min="2000" max="2100"
+                               value="{{ selected.year if selected else current_year }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn">Generate Forecast</button>
+            </form>
+        </div>
 
-                    {% if graph_data %}
-                    <div id="cost-chart" style="width:100%;max-width:700px"></div>
-                    <script>
-                        var trace1 = {
-                            x: ['Prophet', 'LSTM', 'Total'],
-                            y: [{{ graph_data.prophet_pred }}, {{ graph_data.lstm_pred }}, {{ graph_data.total_pred }}],
-                            name: 'Predictions',
-                            type: 'bar'
-                        };
-
-                        var data = [trace1];
-                        var layout = {
-                            title: 'Model Predictions',
-                            barmode: 'group'
-                        };
-
-                        Plotly.newPlot('cost-chart', data, layout);
-                    </script>
-                    {% endif %}
+        <div class="card info-card">
+            <h3>How the estimate is built</h3>
+            <ul>
+                <li><strong>Air ticket</strong> &mdash; route history, re-anchored to live market fares when available.</li>
+                <li><strong>Accommodation</strong> &mdash; destination nightly rate &times; nights.</li>
+                <li><strong>Daily allowance</strong> &mdash; policy rate &times; days. Exact, not predicted.</li>
+                <li><strong>Other</strong> &mdash; incidental spend per day for the destination.</li>
+            </ul>
+            <div class="fare-status {{ 'live' if fare_stats.quotes else 'stale' }}">
+                {% if offline_mode %}
+                    <strong>Offline mode.</strong> No outbound calls; airfare is historical only.
+                {% elif fare_stats.quotes %}
+                    <strong>Fare data:</strong> {{ fare_stats.quotes }} quotes across
+                    {{ fare_stats.routes }} route(s), last refreshed
+                    {{ fare_stats.last_refresh.strftime('%d %b %Y %H:%M UTC') }}.
+                {% elif fares_configured %}
+                    <strong>No fares cached yet.</strong> Run <code>python cli.py refresh-fares</code>.
                 {% else %}
-                    <div class="placeholder">
-                        <div class="icon">&#128202;</div>
-                        <h2>Ready to Forecast</h2>
-                        <p>Enter your trip details on the left and click "Generate Forecast" to run the local Prophet/LSTM engine.</p>
-                    </div>
+                    <strong>Live fares not configured.</strong> Airfare uses history alone.
                 {% endif %}
             </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        {% if result %}
+            <h2>Forecasted Cost</h2>
+            <h1>&euro;{{ '%.2f'|format(result.total) }}</h1>
+            <p class="subtle">
+                {{ country_names[result.inputs.home_country] }} &rarr;
+                {{ country_names[result.inputs.dest_country] }},
+                {{ result.inputs.num_days }} day(s),
+                {{ months[result.inputs.month - 1] }} {{ result.inputs.year }}
+            </p>
+
+            <table class="breakdown">
+                <thead>
+                    <tr><th>Component</th><th class="num">Amount</th><th>Basis</th></tr>
+                </thead>
+                <tbody>
+                {% for key, component in result.components.items() %}
+                    {% set labels = {'air': 'Air Ticket', 'hotel': 'Accommodation',
+                                     'allowance': 'Daily Allowance', 'other': 'Other'} %}
+                    <tr>
+                        <td>
+                            {{ labels[key] }}
+                            {% if component.source == 'live-anchored' %}
+                                <span class="tag live">live</span>
+                            {% elif component.source == 'policy' %}
+                                <span class="tag policy">policy</span>
+                            {% endif %}
+                        </td>
+                        <td class="num">&euro;{{ '%.2f'|format(component.amount) }}</td>
+                        <td class="basis">
+                            {% if key == 'air' and component.source == 'live-anchored' %}
+                                live {{ '%.0f'|format(component.live_price) }}&euro; on
+                                {{ component.route }} ({{ component.fare_quotes }} quotes,
+                                {{ '%.0f'|format(component.fare_age_days) }}d old),
+                                weight {{ component.anchor_weight }};
+                                history &euro;{{ '%.0f'|format(component.historical_amount) }}
+                            {% elif key == 'hotel' %}
+                                &euro;{{ '%.2f'|format(component.nightly_rate) }}/night
+                                &times; {{ component.nights }} night(s), {{ component.basis }}
+                            {% elif key == 'allowance' %}
+                                &euro;{{ '%.2f'|format(component.daily_rate) }}/day
+                                &times; {{ component.days }} day(s), {{ component.basis }}
+                            {% elif key == 'other' %}
+                                &euro;{{ '%.2f'|format(component.daily_rate) }}/day
+                                &times; {{ component.days }} day(s), {{ component.basis }}
+                            {% else %}
+                                {{ component.basis }}
+                                {%- if component.observations %} ({{ component.observations }} trips){% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr><th>Total</th><th class="num">&euro;{{ '%.2f'|format(result.total) }}</th><th></th></tr>
+                </tfoot>
+            </table>
+
+            <div class="chart">
+                {% set max_amount = result.breakdown.values() | max %}
+                {% for label, amount in result.breakdown.items() %}
+                    <div class="bar-row">
+                        <div class="bar-label">{{ label }}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: {{ (100 * amount / max_amount) if max_amount else 0 }}%"></div>
+                        </div>
+                        <div class="bar-value">&euro;{{ '%.0f'|format(amount) }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if not result.fares_live and result.inputs.home_country != result.inputs.dest_country %}
+                <p class="caveat">
+                    Airfare is based on historical bookings only. Refresh live fares
+                    for a route-current estimate.
+                </p>
+            {% endif %}
         {% else %}
-            <div class="right-panel" style="width: 100%; text-align: center;">
-                <h2>Model is Training...</h2>
-                <p>The forecasting model is being trained. Please wait a few moments and then refresh the page.</p>
+            <div class="placeholder">
+                <div class="icon">&#128200;</div>
+                <h2>Ready to forecast</h2>
+                <p>Enter trip details on the left. Every component is estimated
+                   separately and shown with the evidence behind it.</p>
             </div>
         {% endif %}
     </div>
+</div>
 </body>
 </html>

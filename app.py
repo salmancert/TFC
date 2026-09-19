@@ -1,102 +1,141 @@
-from flask import Flask, render_template, request
-from travel_cost_forecasting.src.main import train_and_evaluate_model
-from travel_cost_forecasting.src.model import forecast_cost
-from travel_cost_forecasting.src.data_processing import ALL_COUNTRIES, COUNTRY_CODES
+"""Flask front end for local travel cost forecasting.
+
+Runs entirely on the machine it is started on. The expense export, the
+allowance sheet, the trained model and the fare cache never leave it.
+"""
 import calendar
-import threading
-import pickle
+import logging
 import os
-import argparse
+from datetime import datetime
 
-# Define the path for the cached model at the module level
-script_dir = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(script_dir, 'travel_cost_forecasting', 'models', 'trained_model.pkl')
+from flask import Flask, jsonify, render_template, request
 
-def create_app(**kwargs):
-    app = Flask(__name__, template_folder='travel_cost_forecasting/templates', static_folder='travel_cost_forecasting/static')
+from travel_cost_forecasting import config
+from travel_cost_forecasting.countries import ALL_COUNTRIES, COUNTRY_CODES
+from travel_cost_forecasting.fares import FareCache
+from travel_cost_forecasting.model import TripCostForecaster, train_forecaster
 
-    # --- Model Loading and Training ---
-    if not os.path.exists(model_path):
-        print("No cached model found. Training a new model...")
-        prophet_model, lstm_model, scaler, train_data = train_and_evaluate_model()
-        model_data = {
-            'prophet_model': prophet_model,
-            'lstm_model': lstm_model,
-            'scaler': scaler,
-            'train_data': train_data
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+MONTH_NAMES = list(calendar.month_name)[1:]
+
+
+def _load_forecaster(retrain=False):
+    """Returns a fitted forecaster, using the cached one when it is current."""
+    if not retrain and os.path.exists(config.MODEL_CACHE_PATH):
+        try:
+            forecaster = TripCostForecaster.load()
+            logger.info('Loaded cached model trained on %d trips', forecaster.n_trips)
+            return forecaster
+        except Exception:  # noqa: BLE001 - a stale pickle must not block startup
+            logger.exception('Cached model could not be loaded; retraining')
+    logger.info('Training forecaster from local data...')
+    forecaster, _, _ = train_forecaster()
+    logger.info('Training complete on %d trips', forecaster.n_trips)
+    return forecaster
+
+
+def create_app(retrain=False, forecaster=None, fare_cache=None):
+    app = Flask(__name__,
+                template_folder='travel_cost_forecasting/templates',
+                static_folder='travel_cost_forecasting/static')
+
+    app.forecaster = forecaster or _load_forecaster(retrain=retrain)
+    app.fare_cache = fare_cache or FareCache(config.FARE_CACHE_PATH)
+
+    def _context(**extra):
+        stats = app.fare_cache.stats()
+        trained_from, trained_to = app.forecaster.date_range
+        context = {
+            'countries': ALL_COUNTRIES,
+            'country_names': COUNTRY_CODES,
+            'months': MONTH_NAMES,
+            'current_year': datetime.now().year,
+            'fare_stats': stats,
+            'offline_mode': config.OFFLINE_MODE,
+            'fares_configured': bool(config.AMADEUS_CLIENT_ID
+                                     and config.AMADEUS_CLIENT_SECRET),
+            'model_info': {
+                'n_trips': app.forecaster.n_trips,
+                'trained_at': app.forecaster.trained_at,
+                'data_from': trained_from,
+                'data_to': trained_to,
+            },
         }
-        with open(model_path, 'wb') as f:
-            pickle.dump(model_data, f)
-        print("Model training complete and cached.")
+        context.update(extra)
+        return context
 
-    print(f"Loading model from {model_path}...")
-    with open(model_path, 'rb') as f:
-        model_data = pickle.load(f)
-    app.prophet_model = model_data['prophet_model']
-    app.lstm_model = model_data['lstm_model']
-    app.scaler = model_data['scaler']
-    app.train_data = model_data['train_data']
-    app.model_ready = True
-    print("Model loaded successfully.")
+    def _read_request(form):
+        """Validates and normalises the forecast form."""
+        home = (form.get('home_country') or '').strip().upper()
+        dest = (form.get('dest_country') or '').strip().upper()
+        if home not in COUNTRY_CODES or dest not in COUNTRY_CODES:
+            raise ValueError('Please choose a valid home and destination country.')
+        try:
+            num_days = int(form.get('num_days', 0))
+            month = int(form.get('month', 0))
+            year = int(form.get('year', datetime.now().year))
+        except (TypeError, ValueError):
+            raise ValueError('Duration, month and year must be whole numbers.')
+        if not 1 <= num_days <= 365:
+            raise ValueError('Duration must be between 1 and 365 days.')
+        if not 1 <= month <= 12:
+            raise ValueError('Month must be between 1 and 12.')
+        if not 2000 <= year <= 2100:
+            raise ValueError('Year looks out of range.')
+        return home, dest, num_days, month, year
 
     @app.route('/')
     def index():
-        month_names = list(calendar.month_name)[1:]
-        return render_template('index.html', countries=ALL_COUNTRIES, country_names=COUNTRY_CODES, months=month_names, model_ready=app.model_ready)
+        return render_template('index.html', **_context())
 
     @app.route('/predict', methods=['POST'])
     def predict():
-        if not app.model_ready:
-            return "Model is not ready yet, please try again in a few moments."
+        try:
+            home, dest, num_days, month, year = _read_request(request.form)
+        except ValueError as exc:
+            return render_template('index.html', **_context(error=str(exc))), 400
 
-        home_country = request.form['home_country']
-        dest_country = request.form['dest_country']
-        num_days = int(request.form['num_days'])
-        month = int(request.form['month'])
-        year = int(request.form['year'])
+        result = app.forecaster.predict(home, dest, num_days, month, year,
+                                        fare_cache=app.fare_cache)
+        return render_template('index.html', **_context(
+            result=result,
+            selected={'home_country': home, 'dest_country': dest,
+                      'num_days': num_days, 'month': month, 'year': year}))
 
-        total_cost, breakdown, prophet_pred, lstm_pred = forecast_cost(
-            app.prophet_model,
-            app.lstm_model,
-            app.scaler,
-            app.train_data,
-            home_country,
-            dest_country,
-            num_days,
-            month,
-            year
-        )
+    @app.route('/api/forecast', methods=['POST'])
+    def api_forecast():
+        """JSON endpoint, for embedding the estimate in another internal tool."""
+        payload = request.get_json(silent=True) or request.form
+        try:
+            home, dest, num_days, month, year = _read_request(payload)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+        result = app.forecaster.predict(home, dest, num_days, month, year,
+                                        fare_cache=app.fare_cache)
+        return jsonify(result)
 
-        month_names = list(calendar.month_name)[1:]
+    @app.route('/healthz')
+    def healthz():
+        return jsonify({'status': 'ok', 'trips': app.forecaster.n_trips})
 
-        # Prepare data for Plotly graphs
-        graph_data = {
-            'prophet_pred': prophet_pred,
-            'lstm_pred': lstm_pred,
-            'total_pred': total_cost
-        }
-
-        return render_template('index.html',
-                               countries=ALL_COUNTRIES,
-                               country_names=COUNTRY_CODES,
-                               months=month_names,
-                               prediction=total_cost,
-                               breakdown=breakdown,
-                               graph_data=graph_data,
-                               model_ready=app.model_ready)
     return app
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Travel Cost Forecasting Web App')
-    parser.add_argument('--retrain', action='store_true', help='Force retraining of the model.')
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Travel Cost Forecasting web app')
+    parser.add_argument('--retrain', action='store_true',
+                        help='Retrain from the local data instead of using the cached model.')
+    parser.add_argument('--host', default='127.0.0.1',
+                        help='Bind address. Defaults to localhost only.')
+    parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--debug', action='store_true',
+                        help='Enable the Flask debugger. Never use on a shared host.')
     args = parser.parse_args()
 
-    app = create_app()
-
-    if args.retrain and os.path.exists(model_path):
-        print(f"Retrain flag set. Deleting cached model at {model_path}...")
-        os.remove(model_path)
-        # Retrain the model
-        train_and_evaluate_model()
-
-    app.run(debug=True, host='0.0.0.0')
+    create_app(retrain=args.retrain).run(host=args.host, port=args.port,
+                                         debug=args.debug)

@@ -131,6 +131,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1
 .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 9px; margin-left: 5px; vertical-align: middle; }
 .tag.live { background: #e3f5ea; color: var(--live); }
 .tag.policy { background: #eeeafb; color: var(--policy); }
+.tag.learned { background: #e7f0fb; color: var(--accent-dark); }
+
+.estimator-note { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
 
 .chart { margin-top: 8px; }
 .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }

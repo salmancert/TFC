@@ -1,11 +1,13 @@
-# Runtime dependencies. Deliberately small: the forecaster is pandas and numpy
-# arithmetic, so there is no TensorFlow or Prophet to install, no GPU, and no
-# multi-hundred-megabyte wheel. It installs and runs on an ordinary laptop.
+# Runtime dependencies. Deliberately small: no TensorFlow, no Prophet, no GPU
+# and no multi-hundred-megabyte wheel. It installs and runs on an ordinary
+# laptop. scikit-learn provides the gradient boosted estimator, which is used
+# only when it demonstrably beats the simpler model on your own data.
 Flask==3.1.2
 pandas==2.3.3
 numpy==2.3.5
 openpyxl==3.1.5
 requests==2.32.5
+scikit-learn==1.7.2
 
 # Optional: only needed to serve the app to more than one user.
 gunicorn==23.0.0

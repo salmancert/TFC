@@ -80,6 +80,13 @@
                 <li><strong>Daily allowance</strong> &mdash; policy rate &times; days. Exact, not predicted.</li>
                 <li><strong>Other</strong> &mdash; incidental spend per day for the destination.</li>
             </ul>
+            <p class="estimator-note">
+                Each component is fitted two ways &mdash; a hierarchical route
+                model and a gradient boosted tree &mdash; and the one that wins
+                on held-out folds is kept. Components marked
+                <span class="tag learned">boosted</span> found structure the
+                simpler model could not express.
+            </p>
             <div class="fare-status {{ 'live' if fare_stats.quotes else 'stale' }}">
                 {% if offline_mode %}
                     <strong>Offline mode.</strong> No outbound calls; airfare is historical only.
@@ -122,6 +129,9 @@
                                 <span class="tag live">live</span>
                             {% elif component.source == 'policy' %}
                                 <span class="tag policy">policy</span>
+                            {% endif %}
+                            {% if component.estimator == 'gradient boosting' %}
+                                <span class="tag learned" title="A boosted tree beat the simpler estimator on held-out data for this component">boosted</span>
                             {% endif %}
                         </td>
                         <td class="num">&euro;{{ '%.2f'|format(component.amount) }}</td>

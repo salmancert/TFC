@@ -26,6 +26,50 @@ become a route's estimate.
 Seasonality and the cost trend are fitted on *route-relative* values, so a
 change in which destinations are popular is not mistaken for price inflation.
 
+## Which model is used
+
+Each component is fitted two ways and the better one is kept:
+
+- **Hierarchical estimator** — route level × season × trend. Separable,
+  explainable, works on small data.
+- **Gradient boosted trees** (`HistGradientBoostingRegressor`) — can learn
+  interactions the hierarchical model cannot express, such as a nightly rate
+  that falls on long stays, a destination whose peak season differs from
+  everywhere else, or a fare cliff at a Saturday-night stay.
+
+The choice is made per component by rolling-origin cross-validation on the
+*training* data only — three chronological folds, each training before a cut
+and testing after it. The tree is adopted only if it wins a majority of folds
+by a clear margin and does not make absolute error materially worse. A single
+split was not enough: on data that genuinely suits the simple model, a tree
+still won one split by chance, which is exactly the trap this avoids.
+
+Below 150 observations for a component, no tree is attempted. Trees also cannot
+extrapolate beyond their training period, so the annual trend is divided out
+before fitting and re-applied analytically at prediction time — otherwise a
+forecast for 2027 would come back at today's prices.
+
+Per-diem is never handed to either model. It is policy arithmetic.
+
+`python cli.py train --evaluate` prints which estimator won each component and
+why. Components using a tree are marked **boosted** in the web interface.
+
+### Measured effect
+
+Benchmarked on synthetic exports with known ground truth (`tests/synthetic.py`),
+comparing hierarchical-only against automatic selection, on the trip total:
+
+| Dataset | MdAPE hierarchical | MdAPE auto-selected | Change |
+|---|---|---|---|
+| Separable costs, 900 trips | 8.0% | 8.0% | no change — tree correctly declined |
+| Interaction structure, 900 trips | 11.9% | 8.4% | **−30%** |
+| Interaction structure, 2,500 trips | 10.4% | 7.3% | **−30%** |
+| Interaction structure, 160 trips | 6.8% | 6.8% | no change — below threshold |
+
+The gain depends entirely on whether such structure exists in your data. Where
+it does not, selection falls back to the simpler model and changes nothing —
+which is the point: the upside is captured without risking a regression.
+
 ## Setup
 
 ```bash
@@ -138,6 +182,9 @@ by environment variable:
   If your policy sets them by home country, set `TCF_ALLOWANCE_BASIS=home`.
 - **The sandbox Amadeus tier** returns a cached subset of real fares, so
   absolute values on `AMADEUS_HOSTNAME=test` are indicative rather than exact.
+- **Incidental spend ("other") is inherently noisy** — roughly 30% MdAPE in
+  every benchmark, under either estimator. It is a small share of trip cost, so
+  this matters little for the total, but do not read that line as precise.
 
 ## Tests
 
@@ -146,6 +193,15 @@ pip install -r requirements-dev.txt
 python -m pytest tests/ -q
 ```
 
-`tests/synthetic.py` generates a multi-year export with known ground truth —
-route fares, seasonality and an annual trend — so the tests assert that the
-model actually recovers them, rather than merely running without error.
+`tests/synthetic.py` generates multi-year exports with known ground truth, so
+the tests assert that the model actually recovers them rather than merely
+running without error. It provides two generators on purpose:
+
+- `make_export` — costs are separable (route × season × trend), matching the
+  hierarchical model's assumptions
+- `make_complex_export` — adds route-specific seasonality, stay discounts and
+  volume discounts, which a separable model structurally cannot represent
+
+Benchmarking only on the first would be rigged in the simple model's favour.
+The selection tests assert both directions: the tree must be adopted when
+structure exists, and declined when it does not.

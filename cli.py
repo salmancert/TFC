@@ -29,10 +29,14 @@ def cmd_train(args):
         forecaster.date_range[0].date() if forecaster.date_range[0] is not None else '?',
         forecaster.date_range[1].date() if forecaster.date_range[1] is not None else '?'))
     print('Model cached at %s' % config.MODEL_CACHE_PATH)
-    print('Air: %d observations, annual trend %+.1f%%'
-          % (forecaster.air.n_observations, forecaster.air.annual_trend * 100))
-    print('Hotel: %d observations, annual trend %+.1f%%'
-          % (forecaster.hotel.n_observations, forecaster.hotel.annual_trend * 100))
+    print()
+    print('Estimator chosen per component (decided on held-out folds):')
+    for name in ('air', 'hotel', 'other'):
+        component = getattr(forecaster, name)
+        print('  %-6s %-18s %d obs, trend %+.1f%% -- %s'
+              % (name, component.selection.get('chosen', 'hierarchical'),
+                 component.n_observations, component.annual_trend * 100,
+                 component.selection.get('reason', '')))
 
     if args.evaluate:
         print('\nChronological backtest (last %d%% held out):' % int(args.test_fraction * 100))
@@ -62,6 +66,8 @@ def cmd_forecast(args):
     print('-' * 62)
     for key, component in result['components'].items():
         detail = component.get('basis', '')
+        if component.get('estimator') == 'gradient boosting':
+            detail = 'gradient boosting'
         if component['source'] == 'live-anchored':
             detail = 'live fare %.0f EUR, weight %.2f, %s history' % (
                 component['live_price'], component['anchor_weight'], component['basis'])

@@ -58,6 +58,21 @@ A `Legend` sheet explains the colours and carries the run summary; a
 `Matches` sheet lists every decision with both sides side by side, the
 amount and date differences, and the individual feature scores.
 
+### The interface
+
+The window is a single scrolling column, so nothing clips on a small
+laptop screen, with the **Reconcile** button pinned to the bottom where it
+is always reachable.
+
+- **Layout** is a segmented picker, set for you from what is in the file.
+- **Matching rules** start collapsed, since the defaults suit most
+  statements. Open them only when you want to change something.
+- **Light and dark** themes; the toggle sits in the top right.
+
+The look is built from the standard library alone - a flat restyle of ttk
+plus a few hand-drawn controls in `bank_reconciliation/theme.py` - so there
+is no extra dependency to install and no theme package to keep in step.
+
 ## Reconciliation packs (one sheet per bank)
 
 This is the common case when the pack is prepared by an outsourced provider:

@@ -183,15 +183,22 @@ def _open_in_file_manager(path: str) -> None:
 class ReconcilerApp:
     """The Tk window."""
 
-    def __init__(self, master=None) -> None:
+    def __init__(self, master=None, theme: str = "light") -> None:
         import tkinter as tk
         from tkinter import ttk
+
+        from .theme import PALETTES, Typography
 
         self.tk = tk
         self.ttk = ttk
         self.root = master or tk.Tk()
         self.root.title("Bank Reconciliation")
-        self.root.minsize(760, 620)
+        self.root.minsize(880, 700)
+        self.root.geometry("980x860")
+
+        self.theme_name = tk.StringVar(value=theme)
+        self.palette = PALETTES[theme]
+        self.type_scale = Typography.build(self.root)
 
         self.statement_path = tk.StringVar()
         self.ledger_path = tk.StringVar()
@@ -209,240 +216,387 @@ class ReconcilerApp:
         self.sign_convention = tk.StringVar(value="auto")
         self.group_matching = tk.BooleanVar(value=True)
 
-        self.status = tk.StringVar(value="Choose an Excel file to begin.")
+        self.status = tk.StringVar(value="Choose a workbook to begin.")
+        self.source_caption = tk.StringVar(value="No file selected yet.")
+        self.layout_caption = tk.StringVar(value="")
         self._queue: queue.Queue = queue.Queue()
         self._worker: threading.Thread | None = None
         self._last_output: str | None = None
+        self._result_rows: list[tuple[str, str]] = []
 
+        self._poll_id: str | None = None
+        self._closing = False
         self._build()
-        self.root.after(100, self._drain_queue)
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        # Also covers a caller that destroys the window directly: Tcl reports
+        # "invalid command name" if a pending after() outlives the widget.
+        self.root.bind("<Destroy>", self._on_destroy)
+        self._poll_id = self.root.after(100, self._drain_queue)
 
     # ------------------------------------------------------------------ UI
     def _build(self) -> None:
+        from .theme import (
+            AutoHideScrollbar, Card, Chip, CollapsibleCard, RoundedButton,
+            ScrollableFrame, SegmentedControl, ToggleSwitch, apply_theme,
+            flatten_scrollbar,
+        )
+
         tk, ttk = self.tk, self.ttk
-        root = self.root
+        root, p, t = self.root, self.palette, self.type_scale
+        style = apply_theme(root, p, t)
+        flatten_scrollbar(style, p)
+
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(3, weight=1)
+        root.rowconfigure(1, weight=1)
 
-        padding = {"padx": 8, "pady": 4}
-
-        # --- source files -------------------------------------------------
-        source = ttk.LabelFrame(root, text="1. Data")
-        source.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 4))
-        source.columnconfigure(1, weight=1)
-
-        ttk.Label(source, text="Workbook:").grid(row=0, column=0, sticky="w", **padding)
-        ttk.Entry(source, textvariable=self.statement_path).grid(
-            row=0, column=1, sticky="ew", **padding
+        # ---------------------------------------------------------- header
+        header = ttk.Frame(root, style="Canvas.TFrame")
+        header.grid(row=0, column=0, sticky="ew", padx=22, pady=(16, 10))
+        header.columnconfigure(0, weight=1)
+        ttk.Label(header, text="Bank Reconciliation", style="Title.TLabel").grid(
+            row=0, column=0, sticky="w"
         )
-        ttk.Button(source, text="Browse...", command=self._browse_statement).grid(
-            row=0, column=2, **padding
+        ttk.Label(
+            header,
+            text="Match your ledger against the bank, and mark up your own spreadsheet.",
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+
+        self.theme_button = RoundedButton(
+            header,
+            text="Dark" if p.name == "light" else "Light",
+            command=self._toggle_theme,
+            palette=p, type_scale=t, kind="ghost", height=32,
+            min_width=86, surface=p.canvas,
+        )
+        self.theme_button.grid(row=0, column=1, rowspan=2, sticky="e")
+
+        # ----------------------------------------------------------- source
+        self.scroller = ScrollableFrame(root, p)
+        self.scroller.grid(row=1, column=0, sticky="nsew")
+        sheet = self.scroller.body
+        sheet.columnconfigure(0, weight=1)
+
+        source_card = Card(sheet, p)
+        source_card.grid(row=0, column=0, sticky="ew", padx=22, pady=(0, 10))
+        source = source_card.body()
+        source.columnconfigure(0, weight=1)
+
+        ttk.Label(source, text="Source data", style="Section.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(
+            source,
+            text="Pick the workbook. The layout is detected for you.",
+            style="Caption.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(1, 10))
+
+        file_row = ttk.Frame(source, style="Card.TFrame")
+        file_row.grid(row=2, column=0, sticky="ew")
+        file_row.columnconfigure(0, weight=1)
+        ttk.Entry(file_row, textvariable=self.statement_path).grid(
+            row=0, column=0, sticky="ew"
+        )
+        RoundedButton(
+            file_row, text="Browse", command=self._browse_statement,
+            palette=p, type_scale=t, kind="ghost", height=34, surface=p.card,
+        ).grid(row=0, column=1, padx=(8, 0))
+
+        ttk.Label(source, textvariable=self.source_caption, style="Caption.TLabel").grid(
+            row=3, column=0, sticky="w", pady=(6, 0)
         )
 
-        mode_frame = ttk.Frame(source)
-        mode_frame.grid(row=6, column=0, columnspan=3, sticky="w", padx=8, pady=(6, 2))
-        ttk.Label(mode_frame, text="Layout:").grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(
-            mode_frame,
-            text="Each sheet is a full reconciliation (ledger items above, bank items below)",
-            variable=self.mode,
-            value="pack",
-            command=self._apply_mode,
-        ).grid(row=0, column=1, sticky="w", padx=(8, 0))
-        ttk.Radiobutton(
-            mode_frame,
-            text="One sheet is the statement, another is the ledger",
-            variable=self.mode,
-            value="sheets",
-            command=self._apply_mode,
-        ).grid(row=1, column=1, sticky="w", padx=(8, 0))
+        ttk.Separator(source, orient="horizontal", style="Sep.TSeparator").grid(
+            row=4, column=0, sticky="ew", pady=14
+        )
 
-        # --- pack mode: what was found in each sheet ----------------------
-        self.pack_frame = ttk.Frame(source)
+        ttk.Label(source, text="LAYOUT", style="FieldLabel.TLabel").grid(
+            row=5, column=0, sticky="w", pady=(0, 5)
+        )
+        SegmentedControl(
+            source,
+            variable=self.mode,
+            options=[("pack", "One sheet per bank"), ("sheets", "Statement + ledger")],
+            palette=p, type_scale=t, command=self._apply_mode, surface=p.card,
+        ).grid(row=6, column=0, sticky="w")
+        ttk.Label(
+            source, textvariable=self.layout_caption, style="Caption.TLabel"
+        ).grid(row=7, column=0, sticky="w", pady=(6, 0))
+
+        # pack mode: the per-sheet findings
+        self.pack_frame = ttk.Frame(source, style="Card.TFrame")
         self.pack_frame.columnconfigure(0, weight=1)
-        ttk.Label(
-            self.pack_frame,
-            text="Sheets to reconcile (each is matched against itself):",
-        ).grid(row=0, column=0, sticky="w", pady=(4, 2))
+        tree_wrap = tk.Frame(
+            self.pack_frame, background=p.card_border, bd=0, highlightthickness=0
+        )
+        tree_wrap.grid(row=1, column=0, sticky="ew")
+        tree_wrap.columnconfigure(0, weight=1)
         self.sheet_tree = ttk.Treeview(
-            self.pack_frame, columns=("sheet", "found"), show="headings",
-            height=6, selectmode="extended",
+            tree_wrap, columns=("sheet", "found"), show="headings",
+            height=3, selectmode="extended",
         )
-        self.sheet_tree.heading("sheet", text="Sheet")
-        self.sheet_tree.heading("found", text="What was found")
-        self.sheet_tree.column("sheet", width=170, anchor="w")
+        self.sheet_tree.heading("sheet", text="SHEET", anchor="w")
+        self.sheet_tree.heading("found", text="WHAT WAS FOUND", anchor="w")
+        self.sheet_tree.column("sheet", width=190, anchor="w", stretch=False)
         self.sheet_tree.column("found", width=470, anchor="w")
-        self.sheet_tree.grid(row=1, column=0, sticky="ew")
-        pack_scroll = ttk.Scrollbar(
-            self.pack_frame, orient="vertical", command=self.sheet_tree.yview
+        self.sheet_tree.grid(row=0, column=0, sticky="ew", padx=1, pady=1)
+        sheet_scroll = AutoHideScrollbar(
+            tree_wrap, orient="vertical", command=self.sheet_tree.yview,
+            style="Flat.Vertical.TScrollbar",
         )
-        pack_scroll.grid(row=1, column=1, sticky="ns")
-        self.sheet_tree.configure(yscrollcommand=pack_scroll.set)
+        sheet_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 1), pady=1)
+        self.sheet_tree.configure(yscrollcommand=sheet_scroll.set)
+        self.sheet_tree.tag_configure("odd", background=p.stripe)
+        self.sheet_tree.tag_configure("skip", foreground=p.subtle)
         ttk.Label(
             self.pack_frame,
-            text="Nothing selected means every usable sheet.",
-        ).grid(row=2, column=0, sticky="w", pady=(2, 0))
+            text="Select specific sheets, or leave the selection empty for all of them.",
+            style="Caption.TLabel",
+        ).grid(row=2, column=0, sticky="w", pady=(5, 0))
 
-        # --- two-sheet mode ------------------------------------------------
-        self.sheets_frame = ttk.Frame(source)
+        # two-sheet mode: the sheet pickers
+        self.sheets_frame = ttk.Frame(source, style="Card.TFrame")
+        self.sheets_frame.columnconfigure(0, weight=1)
         self.sheets_frame.columnconfigure(1, weight=1)
 
-        self.statement_label = ttk.Label(source, text="Bank statement sheet:")
-        self.statement_label.grid(row=1, column=0, sticky="w", **padding)
+        statement_box = ttk.Frame(self.sheets_frame, style="Card.TFrame")
+        statement_box.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        statement_box.columnconfigure(0, weight=1)
+        ttk.Label(statement_box, text="Bank statement sheet", style="FieldLabel.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 3)
+        )
         self.statement_combo = ttk.Combobox(
-            source, textvariable=self.statement_sheet, state="readonly"
+            statement_box, textvariable=self.statement_sheet, state="readonly"
         )
-        self.statement_combo.grid(row=1, column=1, sticky="ew", **padding)
+        self.statement_combo.grid(row=1, column=0, sticky="ew")
 
-        self.separate_check = ttk.Checkbutton(
-            source,
-            text="Ledger is in a separate file",
-            variable=self.separate_ledger_file,
-            command=self._toggle_separate_ledger,
+        ledger_box = ttk.Frame(self.sheets_frame, style="Card.TFrame")
+        ledger_box.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        ledger_box.columnconfigure(0, weight=1)
+        ttk.Label(ledger_box, text="Ledger sheet", style="FieldLabel.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 3)
         )
-        self.separate_check.grid(row=2, column=1, sticky="w", **padding)
-
-        self.ledger_label = ttk.Label(source, text="Ledger file:")
-        self.ledger_entry = ttk.Entry(source, textvariable=self.ledger_path)
-        self.ledger_button = ttk.Button(source, text="Browse...", command=self._browse_ledger)
-
-        self.ledger_sheet_label = ttk.Label(source, text="Ledger sheet:")
-        self.ledger_sheet_label.grid(row=4, column=0, sticky="w", **padding)
-        self.ledger_combo = ttk.Combobox(source, textvariable=self.ledger_sheet, state="readonly")
-        self.ledger_combo.grid(row=4, column=1, sticky="ew", **padding)
-
-        self.output_label = ttk.Label(source, text="Save marked copy to:")
-        self.output_label.grid(row=5, column=0, sticky="w", **padding)
-        ttk.Entry(source, textvariable=self.output_path).grid(row=5, column=1, sticky="ew", **padding)
-        ttk.Button(source, text="Change...", command=self._browse_output).grid(
-            row=5, column=2, **padding
+        self.ledger_combo = ttk.Combobox(
+            ledger_box, textvariable=self.ledger_sheet, state="readonly"
         )
+        self.ledger_combo.grid(row=1, column=0, sticky="ew")
 
-        # --- settings -----------------------------------------------------
-        settings = ttk.LabelFrame(root, text="2. Matching rules")
-        settings.grid(row=1, column=0, sticky="ew", padx=10, pady=4)
-        for column in (1, 3):
-            settings.columnconfigure(column, weight=1)
-
-        ttk.Label(settings, text="Amount tolerance:").grid(row=0, column=0, sticky="w", **padding)
-        ttk.Entry(settings, textvariable=self.amount_tolerance, width=10).grid(
-            row=0, column=1, sticky="w", **padding
+        self.separate_check = ToggleSwitch(
+            self.sheets_frame, variable=self.separate_ledger_file,
+            palette=p, type_scale=t, text="The ledger is in a separate file",
+            command=self._toggle_separate_ledger, surface=p.card,
         )
-        ttk.Label(settings, text="Date window (days):").grid(row=0, column=2, sticky="w", **padding)
-        ttk.Entry(settings, textvariable=self.date_window, width=10).grid(
-            row=0, column=3, sticky="w", **padding
+        self.separate_check.grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
+
+        self.ledger_label = ttk.Label(
+            self.sheets_frame, text="Ledger file", style="FieldLabel.TLabel"
+        )
+        self.ledger_entry = ttk.Entry(self.sheets_frame, textvariable=self.ledger_path)
+        self.ledger_button = RoundedButton(
+            self.sheets_frame, text="Browse", command=self._browse_ledger,
+            palette=p, type_scale=t, kind="ghost", height=34, surface=p.card,
         )
 
-        ttk.Label(settings, text="Auto-match above:").grid(row=1, column=0, sticky="w", **padding)
-        ttk.Entry(settings, textvariable=self.match_threshold, width=10).grid(
-            row=1, column=1, sticky="w", **padding
+        # ------------------------------------------------------------ rules
+        self.rules_card = CollapsibleCard(
+            sheet, p, t,
+            title="Matching rules",
+            caption="The defaults suit most statements \u00b7 confidence runs from 0 to 1",
+            expanded=False,
+            on_toggle=self._on_rules_toggle,
         )
-        ttk.Label(settings, text="Review above:").grid(row=1, column=2, sticky="w", **padding)
-        ttk.Entry(settings, textvariable=self.review_threshold, width=10).grid(
-            row=1, column=3, sticky="w", **padding
-        )
+        self.rules_card.grid(row=1, column=0, sticky="ew", padx=22, pady=(0, 10))
+        rules = self.rules_card.content
+        for column in range(3):
+            rules.columnconfigure(column, weight=1, uniform="rules")
 
-        ttk.Label(settings, text="Ledger signs:").grid(row=2, column=0, sticky="w", **padding)
+        def field(parent, row, column, caption, variable, pad=(0, 8)):
+            box = ttk.Frame(parent, style="Card.TFrame")
+            box.grid(row=row, column=column, sticky="ew", padx=pad, pady=(0, 8))
+            box.columnconfigure(0, weight=1)
+            ttk.Label(box, text=caption, style="FieldLabel.TLabel").grid(
+                row=0, column=0, sticky="w", pady=(0, 3)
+            )
+            ttk.Entry(box, textvariable=variable).grid(row=1, column=0, sticky="ew")
+            return box
+
+        field(rules, 0, 0, "AMOUNT TOLERANCE", self.amount_tolerance, (0, 8))
+        field(rules, 0, 1, "DATE WINDOW (DAYS)", self.date_window, (8, 8))
+
+        sign_box = ttk.Frame(rules, style="Card.TFrame")
+        sign_box.grid(row=0, column=2, sticky="ew", padx=(8, 0), pady=(0, 8))
+        sign_box.columnconfigure(0, weight=1)
+        ttk.Label(sign_box, text="LEDGER SIGNS", style="FieldLabel.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 3)
+        )
         ttk.Combobox(
-            settings,
-            textvariable=self.sign_convention,
-            state="readonly",
-            width=8,
+            sign_box, textvariable=self.sign_convention, state="readonly",
             values=("auto", "same", "flip"),
-        ).grid(row=2, column=1, sticky="w", **padding)
-        ttk.Checkbutton(
-            settings,
-            text="Match one bank line against several ledger lines",
-            variable=self.group_matching,
-        ).grid(row=2, column=2, columnspan=2, sticky="w", **padding)
+        ).grid(row=1, column=0, sticky="ew")
 
-        # --- action -------------------------------------------------------
-        action = ttk.Frame(root)
-        action.grid(row=2, column=0, sticky="ew", padx=10, pady=4)
-        action.columnconfigure(1, weight=1)
+        field(rules, 1, 0, "AUTO-MATCH ABOVE", self.match_threshold, (0, 8))
+        field(rules, 1, 1, "REVIEW ABOVE", self.review_threshold, (8, 8))
 
-        self.run_button = ttk.Button(action, text="Reconcile", command=self._start)
-        self.run_button.grid(row=0, column=0, padx=(0, 8))
-        self.progress = ttk.Progressbar(action, mode="indeterminate")
-        self.progress.grid(row=0, column=1, sticky="ew")
-        self.open_button = ttk.Button(
-            action, text="Open output folder", command=self._open_output, state="disabled"
+        group_box = ttk.Frame(rules, style="Card.TFrame")
+        group_box.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(6, 0))
+        ttk.Label(group_box, text="GROUPED MATCHES", style="FieldLabel.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 4)
         )
-        self.open_button.grid(row=0, column=2, padx=(8, 0))
+        ToggleSwitch(
+            group_box, variable=self.group_matching, palette=p, type_scale=t,
+            text="Match one bank line against several ledger lines",
+            surface=p.card,
+        ).grid(row=1, column=0, sticky="w")
 
-        # --- results ------------------------------------------------------
-        results = ttk.LabelFrame(root, text="3. Result")
-        results.grid(row=3, column=0, sticky="nsew", padx=10, pady=4)
-        results.columnconfigure(0, weight=1)
-        results.rowconfigure(1, weight=1)
+        # ----------------------------------------------------------- action
+        action = ttk.Frame(root, style="Canvas.TFrame")
+        action.grid(row=2, column=0, sticky="ew", padx=22, pady=(6, 4))
+        action.columnconfigure(0, weight=1)
 
-        legend = ttk.Frame(results)
-        legend.grid(row=0, column=0, sticky="w", padx=8, pady=(8, 2))
-        for index, (background, foreground, caption) in enumerate(SWATCHES):
-            self.tk.Label(
-                legend, text="     ", background=background, relief="solid", borderwidth=1
-            ).grid(row=index, column=0, padx=(0, 6), pady=1)
-            self.tk.Label(legend, text=caption, foreground=foreground).grid(
-                row=index, column=1, sticky="w"
+        self.progress = ttk.Progressbar(
+            action, mode="indeterminate", style="Thin.Horizontal.TProgressbar"
+        )
+        self.progress.grid(row=0, column=0, sticky="ew", padx=(0, 16), pady=(4, 0))
+        self.progress.grid_remove()          # only shown while a run is going
+
+        self.open_button = RoundedButton(
+            action, text="Open folder", command=self._open_output,
+            palette=p, type_scale=t, kind="ghost", height=38, surface=p.canvas,
+        )
+        self.open_button.grid(row=0, column=1, padx=(0, 8))
+        self.open_button.configure(state="disabled")
+
+        self.run_button = RoundedButton(
+            action, text="Reconcile", command=self._start,
+            palette=p, type_scale=t, kind="accent", height=38,
+            min_width=150, surface=p.canvas,
+        )
+        self.run_button.grid(row=0, column=2)
+
+        # ----------------------------------------------------------- result
+        result_card = Card(sheet, p)
+        result_card.grid(row=2, column=0, sticky="ew", padx=22, pady=(0, 14))
+        result = result_card.body()
+        result.columnconfigure(0, weight=1)
+        result.rowconfigure(3, weight=1)
+
+        ttk.Label(result, text="Result", style="Section.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+
+        legend = ttk.Frame(result, style="Card.TFrame")
+        legend.grid(row=1, column=0, sticky="w", pady=(8, 10))
+        for index, (label, fill, foreground) in enumerate((
+            ("Matched", p.ok_fill, p.ok),
+            ("Grouped", p.info_fill, p.info),
+            ("Needs review", p.warn_fill, p.warn),
+            ("Unmatched", p.bad_fill, p.bad),
+        )):
+            Chip(legend, label, fill, foreground, t).grid(
+                row=0, column=index, padx=(0, 6)
             )
 
-        self.tree = ttk.Treeview(results, columns=("metric", "value"), show="headings", height=9)
-        self.tree.heading("metric", text="Sheet / Metric")
-        self.tree.heading("value", text="Result")
-        self.tree.column("metric", width=290, anchor="w")
-        self.tree.column("value", width=380, anchor="w")
-        self.tree.grid(row=1, column=0, sticky="nsew", padx=8, pady=(2, 8))
-        scrollbar = ttk.Scrollbar(results, orient="vertical", command=self.tree.yview)
-        scrollbar.grid(row=1, column=1, sticky="ns", pady=(2, 8))
-        self.tree.configure(yscrollcommand=scrollbar.set)
-
-        ttk.Label(root, textvariable=self.status, anchor="w").grid(
-            row=4, column=0, sticky="ew", padx=12, pady=(0, 10)
+        result_wrap = tk.Frame(
+            result, background=p.card_border, bd=0, highlightthickness=0
         )
-        self._two_sheet_widgets = [
-            (self.statement_label, dict(row=1, column=0, sticky="w", **padding)),
-            (self.statement_combo, dict(row=1, column=1, sticky="ew", **padding)),
-            (self.separate_check, dict(row=2, column=1, sticky="w", **padding)),
-            (self.ledger_sheet_label, dict(row=4, column=0, sticky="w", **padding)),
-            (self.ledger_combo, dict(row=4, column=1, sticky="ew", **padding)),
-        ]
+        result_wrap.grid(row=3, column=0, sticky="nsew")
+        result_wrap.columnconfigure(0, weight=1)
+        result_wrap.rowconfigure(0, weight=1)
+        self.tree = ttk.Treeview(
+            result_wrap, columns=("metric", "value"), show="headings", height=6
+        )
+        self.tree.heading("metric", text="SHEET / METRIC", anchor="w")
+        self.tree.heading("value", text="RESULT", anchor="w")
+        self.tree.column("metric", width=300, anchor="w", stretch=False)
+        self.tree.column("value", width=430, anchor="w")
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
+        result_scroll = AutoHideScrollbar(
+            result_wrap, orient="vertical", command=self.tree.yview,
+            style="Flat.Vertical.TScrollbar",
+        )
+        result_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 1), pady=1)
+        self.tree.configure(yscrollcommand=result_scroll.set)
+        self.tree.tag_configure("odd", background=p.stripe)
+        self.tree.tag_configure("total", font=t.body_bold)
+
+        # ----------------------------------------------------------- status
+        ttk.Label(root, textvariable=self.status, style="Status.TLabel").grid(
+            row=3, column=0, sticky="ew", padx=24, pady=(2, 14)
+        )
+
+        self._two_sheet_widgets = []
         self._apply_mode()
+        self._restore_result_rows()
+
+    # ------------------------------------------------------------- theming
+    def _toggle_theme(self) -> None:
+        """Swap light and dark, rebuilding the window in the new palette."""
+        from .theme import PALETTES
+
+        self.theme_name.set("dark" if self.theme_name.get() == "light" else "light")
+        self.palette = PALETTES[self.theme_name.get()]
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        """Tear the window down and lay it out again in the current palette."""
+        for child in self.root.winfo_children():
+            child.destroy()
+        self._build()
+        self._populate_sheet_tree()
+
+    def _restore_result_rows(self) -> None:
+        for index, (metric, value) in enumerate(self._result_rows):
+            tags = ("total",) if metric == "TOTAL" else (("odd",) if index % 2 else ())
+            self.tree.insert("", "end", values=(metric, value), tags=tags)
+        if self._result_rows:
+            self.open_button.configure(state="normal")
+
+    def _show_results(self, rows: list[tuple[str, str]]) -> None:
+        self._result_rows = rows
+        self.tree.delete(*self.tree.get_children())
+        self._restore_result_rows()
+
+    def _on_rules_toggle(self, expanded: bool) -> None:
+        """Keep the newly revealed settings in view."""
+        self.root.update_idletasks()
+        if expanded:
+            self.scroller.canvas.yview_moveto(
+                max(0.0, self.rules_card.winfo_y() / max(self.scroller.body.winfo_height(), 1))
+            )
+
+    LAYOUT_CAPTIONS = {
+        "pack": "Each sheet holds both sides: ledger items above, bank items below.",
+        "sheets": "One sheet is the bank statement, another is the ledger.",
+    }
 
     def _apply_mode(self) -> None:
         """Show the controls that belong to the selected layout."""
-        pack = self.mode.get() == "pack"
-        if pack:
-            for widget, _ in self._two_sheet_widgets:
-                widget.grid_remove()
-            self.ledger_label.grid_remove()
-            self.ledger_entry.grid_remove()
-            self.ledger_button.grid_remove()
-            self.pack_frame.grid(row=7, column=0, columnspan=3, sticky="ew", padx=8, pady=4)
-            self.output_label.configure(text="Save marked copy to:")
+        self.layout_caption.set(self.LAYOUT_CAPTIONS.get(self.mode.get(), ""))
+        if self.mode.get() == "pack":
+            self.sheets_frame.grid_remove()
+            self.pack_frame.grid(row=8, column=0, sticky="ew", pady=(12, 0))
         else:
             self.pack_frame.grid_remove()
-            for widget, options in self._two_sheet_widgets:
-                widget.grid(**options)
+            self.sheets_frame.grid(row=8, column=0, sticky="ew", pady=(12, 0))
             self._toggle_separate_ledger()
-            self.output_label.configure(text="Save coloured copy to:")
         path = self.statement_path.get().strip()
         if path:
             self.output_path.set(default_output_path(path, self.mode.get()))
 
     def _toggle_separate_ledger(self) -> None:
-        padding = {"padx": 8, "pady": 4}
         if self.mode.get() == "pack":
             return
         if self.separate_ledger_file.get():
-            self.ledger_label.grid(row=3, column=0, sticky="w", **padding)
-            self.ledger_entry.grid(row=3, column=1, sticky="ew", **padding)
-            self.ledger_button.grid(row=3, column=2, **padding)
+            self.ledger_label.grid(row=2, column=0, sticky="w", pady=(10, 3))
+            self.ledger_entry.grid(row=3, column=0, sticky="ew", padx=(0, 8))
+            self.ledger_button.grid(row=3, column=1, sticky="w")
         else:
             self.ledger_label.grid_remove()
             self.ledger_entry.grid_remove()
             self.ledger_button.grid_remove()
             self.ledger_path.set(self.statement_path.get())
-            self._load_sheets(self.statement_path.get(), which="both")
+            if self.statement_path.get():
+                self._load_sheets(self.statement_path.get(), which="both")
 
     # ------------------------------------------------------------- actions
     def _browse_statement(self) -> None:
@@ -452,6 +606,7 @@ class ReconcilerApp:
         if not path:
             return
         self.statement_path.set(path)
+        self.output_path.set(default_output_path(path, self.mode.get()))
         self._inspect(path)
 
     def _browse_ledger(self) -> None:
@@ -491,11 +646,16 @@ class ReconcilerApp:
         self._populate_sheet_tree()
         self._apply_mode()
 
+        total = len(self._findings)
+        usable = sum(1 for v in self._findings.values() if " rows at sheet rows " in v)
+        self.source_caption.set(
+            f"{os.path.basename(path)}   ·   {total} sheet{'s' if total != 1 else ''}"
+            + (f"   ·   {usable} ready to reconcile" if self.mode.get() == "pack" else "")
+        )
         if self.mode.get() == "pack":
-            usable = sum(1 for v in self._findings.values() if " rows at sheet rows " in v)
             self.status.set(
-                f"Found {usable} sheet(s) holding both sides. "
-                "Select specific sheets, or just press Reconcile for all of them."
+                f"Detected a reconciliation pack. {usable} sheet"
+                f"{'s' if usable != 1 else ''} ready - press Reconcile."
             )
         else:
             self.ledger_path.set(path)
@@ -503,8 +663,21 @@ class ReconcilerApp:
 
     def _populate_sheet_tree(self) -> None:
         self.sheet_tree.delete(*self.sheet_tree.get_children())
-        for sheet, finding in self._findings.items():
-            self.sheet_tree.insert("", "end", iid=sheet, values=(sheet, finding))
+        for index, (sheet, finding) in enumerate(self._findings.items()):
+            usable = " rows at sheet rows " in finding
+            tags = []
+            if index % 2:
+                tags.append("odd")
+            if not usable:
+                tags.append("skip")
+            pretty = finding
+            if usable:
+                # "SAP: 26 rows ... / Bank Statement: 26 rows ..." is what the
+                # detector reports; keep it short enough to read at a glance.
+                pretty = finding.replace(" rows at sheet rows ", " rows, lines ")
+            self.sheet_tree.insert(
+                "", "end", iid=sheet, values=(sheet, pretty), tags=tuple(tags)
+            )
 
     def _usable_sheets(self) -> list[str]:
         """The sheets a pack run should cover: the selection, or all usable."""
@@ -607,8 +780,10 @@ class ReconcilerApp:
 
         self.run_button.configure(state="disabled")
         self.open_button.configure(state="disabled")
+        self.progress.grid()
         self.progress.start(12)
-        self.status.set("Reconciling... this can take a moment on large statements.")
+        self.status.set("Reconciling...  this can take a moment on large statements.")
+        self._result_rows = []
         self.tree.delete(*self.tree.get_children())
 
         def work() -> None:
@@ -625,7 +800,41 @@ class ReconcilerApp:
         self._worker = threading.Thread(target=work, daemon=True)
         self._worker.start()
 
+    def _cancel_polling(self) -> None:
+        self._closing = True
+        if self._poll_id is not None:
+            try:
+                self.root.after_cancel(self._poll_id)
+            except Exception:  # noqa: BLE001 - already torn down
+                pass
+            self._poll_id = None
+
+    def _on_destroy(self, event) -> None:
+        if event.widget is self.root:
+            self._cancel_polling()
+
+    def close(self) -> None:
+        """Shut the window down cleanly.
+
+        A pending ``after`` callback that outlives the widget makes Tcl print
+        "invalid command name" on exit, which reads as a crash.
+        """
+        self._cancel_polling()
+        try:
+            self.root.destroy()
+        except Exception:  # noqa: BLE001 - already gone
+            pass
+
     def _drain_queue(self) -> None:
+        import tkinter as tk
+
+        if self._closing:
+            return
+        try:
+            if not self.root.winfo_exists():
+                return
+        except tk.TclError:
+            return          # the window was destroyed without going through _on_close
         try:
             while True:
                 kind, payload = self._queue.get_nowait()
@@ -638,50 +847,57 @@ class ReconcilerApp:
         except queue.Empty:
             pass
         finally:
-            self.root.after(100, self._drain_queue)
+            try:
+                if not self._closing and self.root.winfo_exists():
+                    self._poll_id = self.root.after(100, self._drain_queue)
+            except tk.TclError:
+                pass
 
     def _on_success(self, result: ReconciliationResult, output: str) -> None:
         self.progress.stop()
+        self.progress.grid_remove()
         self.run_button.configure(state="normal")
         self.open_button.configure(state="normal")
         self._last_output = output
-        for key, value in result.summary.items():
-            self.tree.insert("", "end", values=(key, value))
-        self.status.set(f"Done. Coloured workbook saved to {output}")
+        self._show_results([(str(k), str(v)) for k, v in result.summary.items()])
+        self.status.set(f"Done  ·  coloured workbook saved to {os.path.basename(output)}")
 
     def _on_pack_success(self, outcome: PackOutcome, output: str) -> None:
         self.progress.stop()
+        self.progress.grid_remove()
         self.run_button.configure(state="normal")
         self.open_button.configure(state="normal")
         self._last_output = output
 
+        rows: list[tuple[str, str]] = []
         for sheet_outcome in outcome.sheets:
             if not sheet_outcome.ok:
-                self.tree.insert("", "end", values=(sheet_outcome.sheet, f"skipped - {sheet_outcome.skipped}"))
+                rows.append((sheet_outcome.sheet, f"skipped - {sheet_outcome.skipped}"))
                 continue
             counts = sheet_outcome.counts
-            self.tree.insert("", "end", values=(
+            rows.append((
                 sheet_outcome.sheet,
-                f"{counts['matched'] + counts['grouped']} matched, "
-                f"{counts['review']} to review, "
+                f"{counts['matched'] + counts['grouped']} matched   ·   "
+                f"{counts['review']} to review   ·   "
                 f"{counts['unmatched_ledger'] + counts['unmatched_bank']} still open",
             ))
         totals = outcome.totals
-        self.tree.insert("", "end", values=("", ""))
-        self.tree.insert("", "end", values=(
+        rows.append((
             "TOTAL",
-            f"{totals['matched'] + totals['grouped']} matched, "
-            f"{totals['review']} to review, "
+            f"{totals['matched'] + totals['grouped']} matched   ·   "
+            f"{totals['review']} to review   ·   "
             f"{totals['unmatched_ledger'] + totals['unmatched_bank']} still open",
         ))
-        self.status.set(f"Done. Marked copy saved to {output}")
+        self._show_results(rows)
+        self.status.set(f"Done  ·  marked copy saved to {os.path.basename(output)}")
 
     def _on_error(self, error: Exception, detail: str) -> None:
         from tkinter import messagebox
 
         self.progress.stop()
+        self.progress.grid_remove()
         self.run_button.configure(state="normal")
-        self.status.set("Reconciliation failed.")
+        self.status.set("Reconciliation failed - see the message for details.")
         messagebox.showerror("Reconciliation failed", f"{error}\n\n{detail.splitlines()[-1]}")
 
     def _open_output(self) -> None:

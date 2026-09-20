@@ -167,10 +167,11 @@ def test_window_builds_and_reconciles_end_to_end(workbook, tmp_path):
         }
         assert "Auto-matched pairs" in metrics
         assert os.path.exists(tmp_path / "gui_out.xlsx")
-        assert "Done." in app.status.get()
+        assert app.status.get().startswith("Done")
+        assert "gui_out.xlsx" in app.status.get()
         assert str(app.open_button["state"]) == "normal"
     finally:
-        app.root.destroy()
+        app.close()
 
 
 @tk_only
@@ -191,7 +192,7 @@ def test_a_validation_problem_is_reported_not_silently_ignored(
         assert no_blocking_dialogs, "the user was given no feedback"
         assert str(app.run_button["state"]) == "normal"
     finally:
-        app.root.destroy()
+        app.close()
 
 
 @tk_only
@@ -205,7 +206,7 @@ def test_bad_numeric_input_is_caught_before_any_work(workbook, tmp_path):
         with pytest.raises(ValueError, match="must be a number"):
             app._collect_request()
     finally:
-        app.root.destroy()
+        app.close()
 
 
 # ------------------------------------------------------------------ pack mode
@@ -307,7 +308,7 @@ def test_window_detects_a_pack_and_reconciles_every_sheet(pack_workbook, tmp_pat
         assert "TOTAL" in shown
         assert os.path.exists(tmp_path / "gui_marked.xlsx")
     finally:
-        app.root.destroy()
+        app.close()
 
 
 @tk_only
@@ -326,4 +327,4 @@ def test_switching_layout_modes_keeps_the_window_usable(workbook):
         app._apply_mode()
         assert str(app.statement_combo["state"]) == "readonly"
     finally:
-        app.root.destroy()
+        app.close()

@@ -12,6 +12,8 @@ import pandas as pd
 from .matcher import ReconciliationConfig, reconcile
 from .model import load_scorer, save_scorer
 from .highlight import write_highlighted_workbook
+from .pack import mark_workbook, reconcile_pack, sheet_names
+from .single_sheet import detect_layout, read_grid
 from .report import format_console_report, write_csvs, write_excel
 
 LOGGER = logging.getLogger("bank_reconciliation")
@@ -84,6 +86,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Where to write the report (default: <statement>_reconciliation.xlsx)",
     )
     parser.add_argument(
+        "--mode",
+        choices=("auto", "pack", "sheets"),
+        default="auto",
+        help=(
+            "pack: every sheet holds both sides stacked in one sheet (a bank "
+            "reconciliation pack, one sheet per bank). sheets: one sheet is the "
+            "statement and another is the ledger. Default auto-detects."
+        ),
+    )
+    parser.add_argument(
         "--tables",
         action="store_true",
         help="Write plain report tables instead of a colour-coded copy of the data.",
@@ -122,6 +134,60 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+
+def _run_pack(args) -> int:
+    """Reconcile every sheet against itself and mark a copy of the workbook."""
+    config = ReconciliationConfig(
+        amount_tolerance=args.amount_tolerance,
+        date_window_days=args.date_window,
+        match_threshold=args.match_threshold,
+        review_threshold=args.review_threshold,
+        sign_convention=args.sign,
+        group_matching=not args.no_group_matching,
+        max_group_size=args.max_group_size,
+        prior_weight=args.prior_weight,
+    )
+    try:
+        config.validate()
+    except ValueError as error:
+        LOGGER.error("%s", error)
+        return 2
+
+    outcome = reconcile_pack(args.statement, config=config, sheets=args.sheets)
+    if not outcome.processed:
+        LOGGER.error("No sheet in %s held two blocks of open items.", args.statement)
+        for sheet_outcome in outcome.sheets:
+            LOGGER.error("  %s", sheet_outcome.describe())
+        return 1
+
+    output = args.output or f"{os.path.splitext(args.statement)[0]}_marked.xlsx"
+    try:
+        mark_workbook(outcome, output)
+    except ValueError as error:
+        LOGGER.error("%s", error)
+        return 2
+
+    if not args.quiet:
+        print("Reconciliation pack")
+        print("-" * 19)
+        for sheet_outcome in outcome.sheets:
+            print(f"  {sheet_outcome.describe()}")
+        totals = outcome.totals
+        print(
+            f"\n  Total: {totals['matched'] + totals['grouped']} matched, "
+            f"{totals['review']} to review, "
+            f"{totals['unmatched_ledger'] + totals['unmatched_bank']} still open"
+        )
+        print(f"\nMarked copy written to {output}")
+
+    if args.csv_dir:
+        os.makedirs(args.csv_dir, exist_ok=True)
+        outcome.summary_frame().to_csv(
+            os.path.join(args.csv_dir, "pack_summary.csv"), index=False
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(
@@ -135,6 +201,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.ledger and not os.path.exists(args.ledger):
         LOGGER.error("File not found: %s", args.ledger)
         return 2
+
+    mode = args.mode
+    if mode == "auto" and not args.ledger:
+        try:
+            first = args.sheets[0] if args.sheets else sheet_names(args.statement)[0]
+            mode = "pack" if detect_layout(read_grid(args.statement, first)).is_pack else "sheets"
+        except Exception as error:  # noqa: BLE001 - fall back to the two-sheet reader
+            LOGGER.debug("Could not auto-detect the layout: %s", error)
+            mode = "sheets"
+        if mode == "pack":
+            LOGGER.info("Detected a reconciliation pack (both sides stacked per sheet).")
+
+    if mode == "pack":
+        return _run_pack(args)
 
     try:
         if args.ledger:

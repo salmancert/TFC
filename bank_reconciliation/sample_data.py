@@ -192,3 +192,136 @@ def write_sample_workbook(path: str = "test_reconciliation.xlsx", **kwargs) -> s
         sample.bank.to_excel(writer, sheet_name="Bank_Statement", index=False)
         sample.ledger.to_excel(writer, sheet_name="Internal_Ledger", index=False)
     return path
+
+
+def generate_pack(
+    n_matched: int = 22,
+    n_sap_only: int = 4,
+    n_bank_only: int = 4,
+    seed: int = 31,
+) -> tuple[pd.DataFrame, dict[int, int]]:
+    """Build a bank reconciliation pack: one sheet, two stacked blocks.
+
+    This is the layout an outsourced provider hands over - a title block, a
+    balance line, the open SAP items, the open bank items, and a footer -
+    with everything listed as unmatched for the client to mark up.
+
+    Returns the sheet exactly as it would be read with ``header=None``,
+    plus the true SAP-sheet-row -> bank-sheet-row pairing (0-based row
+    indices into that raw sheet).
+    """
+    rng = np.random.default_rng(seed)
+    start = pd.Timestamp("2024-03-01")
+
+    pairs: list[tuple[dict, dict]] = []
+    for index in range(n_matched):
+        name, bank_text, ledger_text = VENDORS[int(rng.integers(len(VENDORS)))]
+        amount = -round(float(rng.uniform(40.0, 7500.0)), 2)
+        sap_date = start + pd.Timedelta(days=int(rng.integers(0, 28)))
+        bank_date = sap_date + pd.Timedelta(days=int(rng.integers(0, 4)))
+        reference = f"INV-{4100 + index}"
+        pairs.append((
+            {
+                "date": sap_date.strftime("%d.%m.%Y"),
+                "doc": str(1900000000 + int(rng.integers(0, 9999999))),
+                "text": f"{ledger_text} {name}",
+                "amount": amount,
+                "ref": reference,
+            },
+            {
+                "date": bank_date.strftime("%d.%m.%Y"),
+                "doc": f"BK{rng.integers(10000000, 99999999)}",
+                "text": bank_text + (f" {reference}" if rng.random() < 0.4 else ""),
+                "amount": amount,
+                "ref": "",
+            },
+        ))
+
+    sap_rows = [p[0] for p in pairs]
+    bank_rows = [p[1] for p in pairs]
+    for index in range(n_sap_only):
+        sap_rows.append({
+            "date": (start + pd.Timedelta(days=int(rng.integers(0, 28)))).strftime("%d.%m.%Y"),
+            "doc": str(1900000000 + int(rng.integers(0, 9999999))),
+            "text": "Accrual - goods received not invoiced",
+            "amount": -round(float(rng.uniform(100.0, 3000.0)), 2),
+            "ref": f"ACC-{7700 + index}",
+        })
+    for _ in range(n_bank_only):
+        bank_rows.append({
+            "date": (start + pd.Timedelta(days=int(rng.integers(0, 28)))).strftime("%d.%m.%Y"),
+            "doc": f"BK{rng.integers(10000000, 99999999)}",
+            "text": "BANK CHARGES - ACCOUNT MAINTENANCE",
+            "amount": -round(float(rng.uniform(5.0, 60.0)), 2),
+            "ref": "",
+        })
+
+    sap_order = rng.permutation(len(sap_rows))
+    bank_order = rng.permutation(len(bank_rows))
+    sap_rows = [sap_rows[i] for i in sap_order]
+    bank_rows = [bank_rows[i] for i in bank_order]
+    sap_at = {int(old): new for new, old in enumerate(sap_order)}
+    bank_at = {int(old): new for new, old in enumerate(bank_order)}
+
+    sheet: list[list[object]] = []
+
+    def emit(*cells: object) -> int:
+        sheet.append(list(cells) + [None] * (5 - len(cells)))
+        return len(sheet) - 1
+
+    emit("Bank Reconciliation Statement")
+    emit("Account:", "DE89 3704 0044 0532 0130 00")
+    emit("Period:", "March 2024")
+    emit()
+    emit("Balance as per Bank Statement", None, None, 482310.77)
+    emit()
+
+    emit("Unmatched items in SAP")
+    emit("Posting Date", "Document No", "Text", "Amount", "Reference")
+    sap_first = len(sheet)
+    for row in sap_rows:
+        emit(row["date"], row["doc"], row["text"], row["amount"], row["ref"])
+
+    emit()
+    emit("Unmatched items in Bank Statement")
+    emit("Value Date", "Bank Reference", "Narrative", "Amount")
+    bank_first = len(sheet)
+    for row in bank_rows:
+        emit(row["date"], row["doc"], row["text"], row["amount"])
+
+    emit()
+    emit("Balance as per SAP", None, None, 469884.21)
+
+    truth = {
+        sap_first + sap_at[index]: bank_first + bank_at[index]
+        for index in range(n_matched)
+    }
+    return pd.DataFrame(sheet), truth
+
+
+def write_sample_pack(path: str = "sample_pack.xlsx", **kwargs) -> str:
+    """Write a generated reconciliation pack to a single-sheet workbook."""
+    sheet, _ = generate_pack(**kwargs)
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        sheet.to_excel(writer, sheet_name="Reconciliation", index=False, header=False)
+    return path
+
+
+def write_sample_multi_bank_pack(
+    path: str = "sample_bank_pack.xlsx",
+    banks: tuple[str, ...] = ("HSBC Current", "Deutsche Bank EUR", "Citi USD"),
+    seed: int = 31,
+    **kwargs,
+) -> tuple[str, dict[str, dict[int, int]]]:
+    """Write a workbook with one reconciliation pack per bank.
+
+    Returns the path and, per sheet, the true SAP-row -> bank-row pairing
+    given as 0-based raw-grid row indices.
+    """
+    truths: dict[str, dict[int, int]] = {}
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        for offset, bank in enumerate(banks):
+            sheet, truth = generate_pack(seed=seed + offset, **kwargs)
+            sheet.to_excel(writer, sheet_name=bank[:31], index=False, header=False)
+            truths[bank[:31]] = truth
+    return path, truths

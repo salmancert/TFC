@@ -39,10 +39,15 @@ This repository also contains a machine-learning bank reconciliation tool
 that matches a bank statement against an internal ledger and writes back a
 colour-coded copy of your spreadsheet.
 
+It handles both layouts: a statement sheet and a ledger sheet to compare,
+or a reconciliation pack with one sheet per bank where each sheet holds the
+open ledger items and the open bank items stacked together.
+
 ```bash
 pip install -r requirements-reconciliation.txt
 python reconcile_gui.py                            # desktop app
 python -m bank_reconciliation statement.xlsx       # command line
+python -m bank_reconciliation pack.xlsx            # one sheet per bank
 ```
 
 See **[RECONCILIATION.md](RECONCILIATION.md)** for the full guide.

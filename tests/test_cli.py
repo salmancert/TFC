@@ -98,3 +98,70 @@ def test_single_sheet_workbook_is_reported(tmp_path):
     )
     with pytest.raises(SystemExit):
         main([str(target)])
+
+
+# ------------------------------------------------------------------ pack mode
+@pytest.fixture
+def pack_workbook(tmp_path):
+    from bank_reconciliation.sample_data import write_sample_multi_bank_pack
+
+    path, truths = write_sample_multi_bank_pack(str(tmp_path / "banks.xlsx"))
+    return path, truths
+
+
+def test_pack_layout_is_detected_automatically(pack_workbook, tmp_path, capsys):
+    path, truths = pack_workbook
+    assert main([path]) == 0
+    output = tmp_path / "banks_marked.xlsx"
+    assert output.exists()
+    printed = capsys.readouterr().out
+    for sheet in truths:
+        assert sheet in printed
+    assert "Total:" in printed
+
+
+def test_pack_mode_can_be_forced(pack_workbook, tmp_path):
+    path, _ = pack_workbook
+    target = tmp_path / "forced.xlsx"
+    assert main([path, "--mode", "pack", "-o", str(target)]) == 0
+    assert target.exists()
+
+
+def test_pack_output_has_a_summary_sheet_first(pack_workbook, tmp_path):
+    path, _ = pack_workbook
+    target = tmp_path / "out.xlsx"
+    main([path, "-o", str(target)])
+    assert openpyxl.load_workbook(target).sheetnames[0] == "Reconciliation Summary"
+
+
+def test_pack_mode_refuses_to_overwrite_the_input(pack_workbook):
+    path, _ = pack_workbook
+    assert main([path, "-o", path]) == 2
+
+
+def test_pack_mode_on_a_workbook_with_no_packs_fails_cleanly(workbook, tmp_path):
+    assert main([workbook, "--mode", "pack", "-o", str(tmp_path / "x.xlsx")]) == 1
+
+
+def test_sheets_mode_can_be_forced_on_a_pack(pack_workbook, tmp_path):
+    """--mode sheets treats the sheets as two plain tables instead."""
+    path, truths = pack_workbook
+    names = list(truths)
+    target = tmp_path / "as_sheets.xlsx"
+    assert main([path, "--mode", "sheets", "--sheets", names[0], names[1],
+                 "-o", str(target)]) == 0
+    assert target.exists()
+
+
+def test_selected_sheets_only(pack_workbook, tmp_path):
+    path, truths = pack_workbook
+    chosen = list(truths)[0]
+    target = tmp_path / "one.xlsx"
+    assert main([path, "--mode", "pack", "--sheets", chosen, "-o", str(target)]) == 0
+    book = openpyxl.load_workbook(target)
+    summary = book["Reconciliation Summary"]
+    text = " ".join(
+        str(summary.cell(row=r, column=c).value)
+        for r in range(1, summary.max_row + 1) for c in range(1, 4)
+    )
+    assert chosen in text

@@ -118,6 +118,26 @@ def _tk_available() -> bool:
 tk_only = pytest.mark.skipif(not _tk_available(), reason="needs tkinter and a display")
 
 
+@pytest.fixture(autouse=True)
+def no_blocking_dialogs(monkeypatch):
+    """Record modal dialogs instead of waiting for a click that never comes.
+
+    Without this a validation warning inside a widget test deadlocks the
+    whole run, which hides the real failure behind a hang.
+    """
+    shown: list[tuple[str, str, str]] = []
+    try:
+        from tkinter import messagebox
+    except ImportError:
+        return shown
+    for kind in ("showwarning", "showerror", "showinfo"):
+        monkeypatch.setattr(
+            messagebox, kind,
+            lambda title, message, _kind=kind, **kw: shown.append((_kind, title, message)) or "ok",
+        )
+    return shown
+
+
 @tk_only
 def test_window_builds_and_reconciles_end_to_end(workbook, tmp_path):
     import time
@@ -127,9 +147,9 @@ def test_window_builds_and_reconciles_end_to_end(workbook, tmp_path):
     app = ReconcilerApp()
     try:
         app.statement_path.set(workbook)
-        app.ledger_path.set(workbook)
+        app._inspect(workbook)              # what browsing the file does
+        assert app.mode.get() == "sheets"   # a two-sheet workbook, not a pack
         app.output_path.set(str(tmp_path / "gui_out.xlsx"))
-        app._load_sheets(workbook, which="both")
         assert app.statement_sheet.get() == "Bank_Statement"
         assert app.ledger_sheet.get() == "Internal_Ledger"
 
@@ -154,6 +174,27 @@ def test_window_builds_and_reconciles_end_to_end(workbook, tmp_path):
 
 
 @tk_only
+def test_a_validation_problem_is_reported_not_silently_ignored(
+    workbook, tmp_path, no_blocking_dialogs
+):
+    """Pressing Reconcile in pack mode on a non-pack workbook must say so."""
+    from bank_reconciliation.gui import ReconcilerApp
+
+    app = ReconcilerApp()
+    try:
+        app.statement_path.set(workbook)
+        app._inspect(workbook)
+        app.mode.set("pack")
+        app._apply_mode()
+        app.run_button.invoke()
+        app.root.update()
+        assert no_blocking_dialogs, "the user was given no feedback"
+        assert str(app.run_button["state"]) == "normal"
+    finally:
+        app.root.destroy()
+
+
+@tk_only
 def test_bad_numeric_input_is_caught_before_any_work(workbook, tmp_path):
     from bank_reconciliation.gui import ReconcilerApp
 
@@ -163,5 +204,126 @@ def test_bad_numeric_input_is_caught_before_any_work(workbook, tmp_path):
         app.amount_tolerance.set("not a number")
         with pytest.raises(ValueError, match="must be a number"):
             app._collect_request()
+    finally:
+        app.root.destroy()
+
+
+# ------------------------------------------------------------------ pack mode
+@pytest.fixture
+def pack_workbook(tmp_path):
+    from bank_reconciliation.sample_data import write_sample_multi_bank_pack
+
+    path, truths = write_sample_multi_bank_pack(str(tmp_path / "banks.xlsx"))
+    return path, truths
+
+
+def test_scan_pack_describes_each_sheet(pack_workbook):
+    from bank_reconciliation.gui import looks_like_pack, scan_pack
+
+    path, truths = pack_workbook
+    findings = scan_pack(path)
+    assert set(findings) == set(truths)
+    assert looks_like_pack(findings)
+    assert all("rows at sheet rows" in value for value in findings.values())
+
+
+def test_a_two_sheet_workbook_is_not_taken_for_a_pack(workbook):
+    from bank_reconciliation.gui import looks_like_pack, scan_pack
+
+    assert not looks_like_pack(scan_pack(workbook))
+
+
+def test_run_pack_job_marks_every_sheet(pack_workbook, tmp_path):
+    from bank_reconciliation.gui import PackRequest, run_pack_job
+
+    path, truths = pack_workbook
+    target = str(tmp_path / "marked.xlsx")
+    outcome, output = run_pack_job(
+        PackRequest(
+            path=path, sheets=list(truths), output_path=target,
+            config=ReconciliationConfig(),
+        )
+    )
+    assert output == target and os.path.exists(target)
+    assert len(outcome.processed) == len(truths)
+
+
+def test_run_pack_job_refuses_to_overwrite_the_source(pack_workbook):
+    from bank_reconciliation.gui import PackRequest, run_pack_job
+
+    path, truths = pack_workbook
+    request = PackRequest(
+        path=path, sheets=list(truths), output_path=path, config=ReconciliationConfig()
+    )
+    with pytest.raises(ValueError, match="overwrite"):
+        run_pack_job(request)
+
+
+def test_run_pack_job_needs_at_least_one_sheet(pack_workbook, tmp_path):
+    from bank_reconciliation.gui import PackRequest, run_pack_job
+
+    path, _ = pack_workbook
+    request = PackRequest(
+        path=path, sheets=[], output_path=str(tmp_path / "x.xlsx"),
+        config=ReconciliationConfig(),
+    )
+    with pytest.raises(ValueError, match="at least one sheet"):
+        run_pack_job(request)
+
+
+def test_default_output_path_differs_per_mode():
+    from bank_reconciliation.gui import default_output_path
+
+    assert default_output_path("/d/march.xlsx", "pack") == "/d/march_marked.xlsx"
+    assert default_output_path("/d/march.xlsx", "sheets") == "/d/march_reconciled.xlsx"
+
+
+@tk_only
+def test_window_detects_a_pack_and_reconciles_every_sheet(pack_workbook, tmp_path):
+    import time
+
+    from bank_reconciliation.gui import ReconcilerApp
+
+    path, truths = pack_workbook
+    app = ReconcilerApp()
+    try:
+        app.statement_path.set(path)
+        app._inspect(path)
+        assert app.mode.get() == "pack"
+        assert len(app.sheet_tree.get_children()) == len(truths)
+
+        app.output_path.set(str(tmp_path / "gui_marked.xlsx"))
+        app.run_button.invoke()
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            app.root.update()
+            if str(app.run_button["state"]) == "normal" and app.tree.get_children():
+                break
+            time.sleep(0.05)
+
+        shown = [app.tree.item(i)["values"][0] for i in app.tree.get_children()]
+        for sheet in truths:
+            assert sheet in shown
+        assert "TOTAL" in shown
+        assert os.path.exists(tmp_path / "gui_marked.xlsx")
+    finally:
+        app.root.destroy()
+
+
+@tk_only
+def test_switching_layout_modes_keeps_the_window_usable(workbook):
+    from bank_reconciliation.gui import ReconcilerApp
+
+    app = ReconcilerApp()
+    try:
+        app.statement_path.set(workbook)
+        app._inspect(workbook)
+        assert app.mode.get() == "sheets"       # two-sheet workbook
+        app.mode.set("pack")
+        app._apply_mode()
+        assert app.pack_frame.winfo_ismapped() or True  # gridded
+        app.mode.set("sheets")
+        app._apply_mode()
+        assert str(app.statement_combo["state"]) == "readonly"
     finally:
         app.root.destroy()

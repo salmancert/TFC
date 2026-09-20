@@ -30,3 +30,19 @@ This project forecasts travel costs using a hybrid model of Prophet and LSTM. It
 
 3.  **Access the application:**
     Open your web browser and go to `http://127.0.0.1:5000`.
+
+---
+
+# Bank Reconciliation
+
+This repository also contains a machine-learning bank reconciliation tool
+that matches a bank statement against an internal ledger and writes back a
+colour-coded copy of your spreadsheet.
+
+```bash
+pip install -r requirements-reconciliation.txt
+python reconcile_gui.py                            # desktop app
+python -m bank_reconciliation statement.xlsx       # command line
+```
+
+See **[RECONCILIATION.md](RECONCILIATION.md)** for the full guide.

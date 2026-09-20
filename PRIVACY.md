@@ -98,6 +98,26 @@ The file is read through the normal filesystem, by the synced client, under the
 signed-in user's existing permissions. The application itself makes no call to
 SharePoint, Microsoft Graph, or any other service.
 
+## Where the data sits when several people use it
+
+Running this as one internal service is the better choice for data protection,
+not just the easier one. The alternative -- giving each person a copy to run --
+means giving each person a copy of the expense export. One server means one
+copy, on a host you control, with one set of file permissions.
+
+What the users' browsers receive is a forecast: four numbers and the evidence
+behind them. No expense line, report key or traveller detail is ever sent to
+the browser.
+
+If you do ever distribute the trained model itself, note that it is aggregate
+statistics rather than records -- medians, shrunk route levels and tree splits.
+But a route flown only once or twice is thinly represented, and its estimate
+will sit close to that single trip's actual cost. Before handing the model file
+to anyone who should not see individual trip costs, suppress thin routes so
+that any route with fewer than k trips falls back to its destination-country
+estimate. That is not implemented today because the current design keeps the
+model on the server.
+
 ## Committing data
 
 `.gitignore` excludes everything in the data directory except the two small

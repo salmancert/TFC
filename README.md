@@ -95,6 +95,11 @@ somewhere else, such as a SharePoint-synced folder):
 
 ## Usage
 
+> Running it for a team? See **[DEPLOYMENT.md](DEPLOYMENT.md)** — the steps
+> below are the single-user path. Serving to other people has one extra rule:
+> build the model offline first, because a web server runs several worker
+> processes and none of them should be training.
+
 ```bash
 # Train on the local export, with a chronological backtest
 python cli.py train --evaluate
@@ -107,7 +112,22 @@ python app.py
 ```
 
 `POST /api/forecast` returns the same result as JSON, for embedding the
-estimate in another internal tool.
+estimate in another internal tool. `GET /healthz` reports model and fare
+freshness for monitoring.
+
+### Serving it to a team
+
+```bash
+python cli.py train                                    # build the model first
+gunicorn --workers 3 --preload --bind 0.0.0.0:8000 wsgi:application
+```
+
+Or `docker compose --profile tools run --rm train && docker compose up -d`.
+On Windows use `waitress-serve --listen=0.0.0.0:8000 wsgi:application`.
+Full instructions, service units and scheduled jobs: **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
+The app has no authentication by design — it is meant to sit on an internal
+interface. Put a reverse proxy with SSO in front if that changes.
 
 ## Live airfare refresh
 
@@ -170,6 +190,21 @@ by environment variable:
 | `TCF_CALL_BUDGET` | `150` | Hard cap on API calls per run |
 | `TCF_MAX_AGE_DAYS` | `30` | Age at which a cached quote stops being used |
 | `TCF_HUB_OVERRIDES` | unset | Correct the country→airport map, e.g. `US=ORD,CN=PEK` |
+
+## Performance
+
+Measured on a 151,000-line export (33,000 trips), which is roughly four years
+of a mid-sized travel programme:
+
+| | |
+|---|---|
+| Load and preprocess | 0.7s |
+| Train, both estimators with cross-validated selection | 28s, 284 MB peak |
+| Forecast latency | 15 ms |
+| Serving, 3 workers with `--preload` | ~560 MB total |
+| Backtest | ~2 minutes |
+
+Training is the only heavy step and runs monthly. Serving is cheap.
 
 ## Known limitations
 

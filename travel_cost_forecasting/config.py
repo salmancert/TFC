@@ -28,6 +28,15 @@ MODEL_CACHE_PATH = os.environ.get(
 # DESTINATION; set TCF_ALLOWANCE_BASIS=home if your policy is home-country based.
 ALLOWANCE_BASIS = os.environ.get('TCF_ALLOWANCE_BASIS', 'dest')
 
+# --- Serving ----------------------------------------------------------------
+# Training on a full export takes tens of seconds and a few hundred MB. A web
+# server runs several worker processes, and each one would train its own copy,
+# so serving never trains by default: build the model offline with
+# `python cli.py train` and the workers load it. Set TCF_TRAIN_ON_STARTUP=1
+# only for single-process local use.
+TRAIN_ON_STARTUP = os.environ.get(
+    'TCF_TRAIN_ON_STARTUP', '').strip().lower() in ('1', 'true', 'yes', 'on')
+
 # --- Privacy / data egress --------------------------------------------------
 # OFFLINE_MODE is a hard kill switch. When set, the application makes no
 # outbound network request of any kind and the airfare model runs purely on the

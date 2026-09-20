@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly fare refresh rotating through the long tail of routes
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=1800
+Unit=tcf-fares@weekly.service
+
+[Install]
+WantedBy=timers.target

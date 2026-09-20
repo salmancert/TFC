@@ -66,8 +66,14 @@ class FareCache:
         parent = os.path.dirname(os.path.abspath(path))
         if parent:
             os.makedirs(parent, exist_ok=True)
-        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn = sqlite3.connect(path, check_same_thread=False, timeout=15.0)
         self._conn.row_factory = sqlite3.Row
+        # The refresh job writes while web workers read. Write-ahead logging
+        # lets readers carry on during a write instead of hitting "database is
+        # locked", and the busy timeout absorbs the brief exclusive moments.
+        self._conn.execute('PRAGMA journal_mode=WAL')
+        self._conn.execute('PRAGMA busy_timeout=15000')
+        self._conn.execute('PRAGMA synchronous=NORMAL')
         self._conn.executescript(SCHEMA)
         self._conn.commit()
 

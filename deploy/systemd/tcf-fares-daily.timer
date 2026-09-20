@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily fare refresh for the busiest routes
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+# Spread the load if the machine was off at the scheduled time.
+Persistent=true
+RandomizedDelaySec=900
+Unit=tcf-fares@daily.service
+
+[Install]
+WantedBy=timers.target

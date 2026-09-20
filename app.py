@@ -22,27 +22,55 @@ logger = logging.getLogger(__name__)
 MONTH_NAMES = list(calendar.month_name)[1:]
 
 
-def _load_forecaster(retrain=False):
-    """Returns a fitted forecaster, using the cached one when it is current."""
+class ModelNotBuiltError(RuntimeError):
+    """Raised when no prebuilt model is available and training is not allowed."""
+
+
+def _load_forecaster(retrain=False, allow_training=None):
+    """Loads the prebuilt model, training only when explicitly permitted.
+
+    Training is deliberately not something a web worker does. On a full export
+    it takes tens of seconds and a few hundred megabytes, and a server runs
+    several workers -- each would train its own copy on every restart. Build
+    the model once with `python cli.py train` and let the workers load it.
+    """
+    allow_training = config.TRAIN_ON_STARTUP if allow_training is None else allow_training
+
     if not retrain and os.path.exists(config.MODEL_CACHE_PATH):
         try:
             forecaster = TripCostForecaster.load()
-            logger.info('Loaded cached model trained on %d trips', forecaster.n_trips)
+            logger.info('Loaded model trained on %d trips (built %s)',
+                        forecaster.n_trips, forecaster.trained_at)
             return forecaster
         except Exception:  # noqa: BLE001 - a stale pickle must not block startup
-            logger.exception('Cached model could not be loaded; retraining')
-    logger.info('Training forecaster from local data...')
+            logger.exception('Cached model at %s could not be loaded',
+                             config.MODEL_CACHE_PATH)
+            if not allow_training:
+                raise ModelNotBuiltError(
+                    'The model file at %s exists but could not be read. Rebuild '
+                    'it with: python cli.py train' % config.MODEL_CACHE_PATH)
+
+    if not allow_training:
+        raise ModelNotBuiltError(
+            'No trained model found at %s. Build one before starting the server:\n'
+            '    python cli.py train\n'
+            'Set TCF_TRAIN_ON_STARTUP=1 to train in-process instead, which is '
+            'only appropriate for single-process local use.' % config.MODEL_CACHE_PATH)
+
+    logger.info('Training forecaster from local data (TCF_TRAIN_ON_STARTUP is set)...')
     forecaster, _, _ = train_forecaster()
     logger.info('Training complete on %d trips', forecaster.n_trips)
     return forecaster
 
 
-def create_app(retrain=False, forecaster=None, fare_cache=None):
+def create_app(retrain=False, forecaster=None, fare_cache=None,
+               allow_training=None):
     app = Flask(__name__,
                 template_folder='travel_cost_forecasting/templates',
                 static_folder='travel_cost_forecasting/static')
 
-    app.forecaster = forecaster or _load_forecaster(retrain=retrain)
+    app.forecaster = forecaster or _load_forecaster(retrain=retrain,
+                                                    allow_training=allow_training)
     app.fare_cache = fare_cache or FareCache(config.FARE_CACHE_PATH)
 
     def _context(**extra):
@@ -119,7 +147,18 @@ def create_app(retrain=False, forecaster=None, fare_cache=None):
 
     @app.route('/healthz')
     def healthz():
-        return jsonify({'status': 'ok', 'trips': app.forecaster.n_trips})
+        """Liveness plus enough provenance to spot a stale deployment."""
+        stats = app.fare_cache.stats()
+        trained_at = app.forecaster.trained_at
+        return jsonify({
+            'status': 'ok',
+            'trips': app.forecaster.n_trips,
+            'model_trained_at': trained_at.isoformat() if trained_at else None,
+            'fare_quotes': stats['quotes'],
+            'fare_last_refresh': (stats['last_refresh'].isoformat()
+                                  if stats['last_refresh'] else None),
+            'offline_mode': config.OFFLINE_MODE,
+        })
 
     return app
 
@@ -137,5 +176,11 @@ if __name__ == '__main__':
                         help='Enable the Flask debugger. Never use on a shared host.')
     args = parser.parse_args()
 
-    create_app(retrain=args.retrain).run(host=args.host, port=args.port,
-                                         debug=args.debug)
+    # Running this file directly is the single-process development path, so
+    # training in-process is allowed here. Production serving goes through
+    # wsgi.py, which does not train. See DEPLOYMENT.md.
+    if args.host != '127.0.0.1':
+        logger.warning('Binding to %s exposes this app to the network. It has no '
+                       'authentication -- keep it on an internal interface.', args.host)
+    create_app(retrain=args.retrain, allow_training=True).run(
+        host=args.host, port=args.port, debug=args.debug)

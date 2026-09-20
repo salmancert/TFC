@@ -1,0 +1,58 @@
+# Internal deployment: one web service plus the scheduled fare refresh.
+#
+#   docker compose run --rm train      # build the model (run after new data)
+#   docker compose up -d               # serve it
+#
+# ./data holds travel_data.csv, daily_allowance.xlsx and the fare cache.
+# ./models holds the trained model. Neither is baked into the image.
+
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    # Bound to the host's internal interface. The app has no authentication,
+    # so do not publish this to a public interface.
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    environment:
+      TCF_OFFLINE: "${TCF_OFFLINE:-}"
+      AMADEUS_CLIENT_ID: "${AMADEUS_CLIENT_ID:-}"
+      AMADEUS_CLIENT_SECRET: "${AMADEUS_CLIENT_SECRET:-}"
+      AMADEUS_HOSTNAME: "${AMADEUS_HOSTNAME:-test}"
+      TCF_ALLOWANCE_BASIS: "${TCF_ALLOWANCE_BASIS:-dest}"
+
+  # One-shot: rebuild the model from whatever is in ./data.
+  train:
+    build: .
+    profiles: ["tools"]
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    command: ["python", "cli.py", "train", "--evaluate"]
+
+  # Scheduled fare refresh. Runs daily, sleeping in between; the container
+  # restart policy keeps it alive across host reboots.
+  fares:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    environment:
+      AMADEUS_CLIENT_ID: "${AMADEUS_CLIENT_ID:-}"
+      AMADEUS_CLIENT_SECRET: "${AMADEUS_CLIENT_SECRET:-}"
+      AMADEUS_HOSTNAME: "${AMADEUS_HOSTNAME:-test}"
+      TCF_OFFLINE: "${TCF_OFFLINE:-}"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          python cli.py refresh-fares --cadence daily || true
+          if [ "$$(date +%u)" = "7" ]; then
+            python cli.py refresh-fares --cadence weekly || true
+          fi
+          sleep 86400
+        done

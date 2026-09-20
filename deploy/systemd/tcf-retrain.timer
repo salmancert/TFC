@@ -1,0 +1,9 @@
+[Unit]
+Description=Monthly model retrain from the latest SAP export
+
+[Timer]
+OnCalendar=*-*-01 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+# Rebuilds the model from the current export, then restarts the web service so
+# workers pick it up. Training takes ~30s on a 150k-line export.
+[Unit]
+Description=Travel Cost Forecasting model retrain
+
+[Service]
+Type=oneshot
+User=tcf
+Group=tcf
+WorkingDirectory=/opt/tcf
+Environment="TCF_DATA_DIR=/var/lib/tcf/data"
+Environment="TCF_MODELS_DIR=/var/lib/tcf/models"
+EnvironmentFile=-/etc/tcf/tcf.env
+ExecStart=/opt/tcf/.venv/bin/python cli.py train --evaluate
+ExecStartPost=/usr/bin/systemctl restart tcf-web.service
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tcf

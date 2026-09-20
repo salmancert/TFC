@@ -1,0 +1,34 @@
+# Travel cost forecasting web service.
+# Install: copy to /etc/systemd/system/, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now tcf-web
+[Unit]
+Description=Travel Cost Forecasting web service
+After=network.target
+
+[Service]
+Type=exec
+User=tcf
+Group=tcf
+WorkingDirectory=/opt/tcf
+Environment="TCF_DATA_DIR=/var/lib/tcf/data"
+Environment="TCF_MODELS_DIR=/var/lib/tcf/models"
+EnvironmentFile=-/etc/tcf/tcf.env
+# --preload loads the model once before forking, so the workers share it
+# copy-on-write instead of each holding its own few hundred megabytes.
+ExecStart=/opt/tcf/.venv/bin/gunicorn \
+    --workers 3 --threads 2 --preload \
+    --bind 0.0.0.0:8000 --timeout 60 \
+    --access-logfile - --error-logfile - \
+    wsgi:application
+Restart=on-failure
+RestartSec=5
+
+# This service reads a company expense export; keep its reach narrow.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tcf
+
+[Install]
+WantedBy=multi-user.target

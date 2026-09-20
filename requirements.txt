@@ -9,5 +9,7 @@ openpyxl==3.1.5
 requests==2.32.5
 scikit-learn==1.7.2
 
-# Optional: only needed to serve the app to more than one user.
-gunicorn==23.0.0
+# Serving to more than one person. gunicorn on Linux, waitress on Windows;
+# install whichever matches your server. See DEPLOYMENT.md.
+gunicorn==23.0.0; sys_platform != 'win32'
+waitress==3.0.2

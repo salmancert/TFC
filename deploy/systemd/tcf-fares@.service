@@ -1,0 +1,20 @@
+# One fare refresh run. Triggered by tcf-fares-daily.timer.
+[Unit]
+Description=Travel Cost Forecasting fare refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tcf
+Group=tcf
+WorkingDirectory=/opt/tcf
+Environment="TCF_DATA_DIR=/var/lib/tcf/data"
+Environment="TCF_MODELS_DIR=/var/lib/tcf/models"
+EnvironmentFile=-/etc/tcf/tcf.env
+ExecStart=/opt/tcf/.venv/bin/python cli.py refresh-fares --cadence %i
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tcf

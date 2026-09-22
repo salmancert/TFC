@@ -22,29 +22,30 @@ class Palette:
     """Every colour the app uses, in one place per mode."""
 
     name: str
-    canvas: str          # the window behind the cards
-    card: str            # card surface
-    card_border: str     # hairline around a card
-    field: str           # entry / combobox interior
-    field_border: str
-    text: str            # primary text
-    muted: str           # secondary text
-    subtle: str          # tertiary text, placeholders
-    accent: str          # primary action
-    accent_hover: str
-    accent_text: str     # text on the accent
-    ghost_hover: str     # secondary button hover
-    selection: str       # selected row
-    stripe: str          # zebra row
-    header: str          # table header background
-    ok: str
-    ok_fill: str
-    info: str
-    info_fill: str
-    warn: str
-    warn_fill: str
-    bad: str
-    bad_fill: str
+    sketch: bool = False        # draw hand-drawn wobbly outlines instead of clean ones
+    canvas: str = "#FFFFFF"   # the window behind the cards
+    card: str = "#000000"            # card surface
+    card_border: str = "#000000"     # hairline around a card
+    field: str = "#000000"           # entry / combobox interior
+    field_border: str = "#000000"
+    text: str = "#000000"            # primary text
+    muted: str = "#000000"           # secondary text
+    subtle: str = "#000000"          # tertiary text, placeholders
+    accent: str = "#000000"          # primary action
+    accent_hover: str = "#000000"
+    accent_text: str = "#000000"     # text on the accent
+    ghost_hover: str = "#000000"     # secondary button hover
+    selection: str = "#000000"       # selected row
+    stripe: str = "#000000"          # zebra row
+    header: str = "#000000"          # table header background
+    ok: str = "#000000"
+    ok_fill: str = "#000000"
+    info: str = "#000000"
+    info_fill: str = "#000000"
+    warn: str = "#000000"
+    warn_fill: str = "#000000"
+    bad: str = "#000000"
+    bad_fill: str = "#000000"
 
 
 LIGHT = Palette(
@@ -93,7 +94,33 @@ DARK = Palette(
     bad="#F5A3A8", bad_fill="#421317",
 )
 
-PALETTES = {"light": LIGHT, "dark": DARK}
+# Paper and ink. xkcd is near-monochrome, so affordance comes from line
+# weight and from a handful of crayon fills rather than from a colour system.
+SKETCH = Palette(
+    name="sketch",
+    sketch=True,
+    canvas="#FBFBF7",
+    card="#FFFFFF",
+    card_border="#1A1A1A",
+    field="#FFFFFF",
+    field_border="#1A1A1A",
+    text="#1A1A1A",
+    muted="#4A4A4A",
+    subtle="#7A7A7A",
+    accent="#1A1A1A",
+    accent_hover="#000000",
+    accent_text="#FFFFFF",
+    ghost_hover="#EFEFE9",
+    selection="#E4E9F5",
+    stripe="#F7F7F2",
+    header="#F2F2EC",
+    ok="#1F5C33", ok_fill="#CDEBD6",
+    info="#1B4A73", info_fill="#CFE2F3",
+    warn="#7A5510", warn_fill="#FBEBC2",
+    bad="#8C2128", bad_fill="#F6D3D5",
+)
+
+PALETTES = {"light": LIGHT, "dark": DARK, "sketch": SKETCH}
 
 # Preferred UI faces per platform, most wanted first.
 FONT_STACK = (
@@ -125,7 +152,21 @@ class Typography:
     mono: tkfont.Font
 
     @classmethod
-    def build(cls, root: tk.Misc) -> "Typography":
+    def build(cls, root: tk.Misc, sketch: bool = False) -> "Typography":
+        if sketch:
+            from .fonts import resolve_sketch_family
+
+            family, _genuine = resolve_sketch_family(root)
+            return cls(
+                # Handwriting faces run small, so the sketch scale is bumped.
+                title=tkfont.Font(root=root, family=family, size=24, weight="bold"),
+                subtitle=tkfont.Font(root=root, family=family, size=13),
+                section=tkfont.Font(root=root, family=family, size=15, weight="bold"),
+                body=tkfont.Font(root=root, family=family, size=13),
+                body_bold=tkfont.Font(root=root, family=family, size=13, weight="bold"),
+                caption=tkfont.Font(root=root, family=family, size=12),
+                mono=tkfont.Font(root=root, family=family, size=12),
+            )
         family = resolve_family(root)
         mono_available = {n.lower() for n in tkfont.families(root)}
         mono_family = next(
@@ -170,11 +211,13 @@ def apply_theme(root: tk.Misc, palette: Palette, type_scale: Typography) -> ttk.
     style.configure("FieldLabel.TLabel", background=p.card, foreground=p.muted, font=t.caption)
 
     # --- text inputs ------------------------------------------------------
+    border_width = 2 if p.sketch else 1
     style.configure(
         "TEntry",
         fieldbackground=p.field, background=p.field, foreground=p.text,
         bordercolor=p.field_border, lightcolor=p.field_border, darkcolor=p.field_border,
-        insertcolor=p.text, borderwidth=1, relief="flat", padding=7,
+        insertcolor=p.text, borderwidth=border_width, relief="flat",
+        padding=8 if p.sketch else 7,
     )
     style.map(
         "TEntry",
@@ -187,7 +230,8 @@ def apply_theme(root: tk.Misc, palette: Palette, type_scale: Typography) -> ttk.
         "TCombobox",
         fieldbackground=p.field, background=p.field, foreground=p.text,
         bordercolor=p.field_border, lightcolor=p.field_border, darkcolor=p.field_border,
-        arrowcolor=p.muted, borderwidth=1, relief="flat", padding=6,
+        arrowcolor=p.muted, borderwidth=border_width, relief="flat",
+        padding=7 if p.sketch else 6,
     )
     style.map(
         "TCombobox",
@@ -224,7 +268,8 @@ def apply_theme(root: tk.Misc, palette: Palette, type_scale: Typography) -> ttk.
     style.configure(
         "Treeview",
         background=p.card, fieldbackground=p.card, foreground=p.text,
-        borderwidth=0, relief="flat", rowheight=27, font=t.body,
+        borderwidth=0, relief="flat",
+        rowheight=32 if p.sketch else 27, font=t.body,
     )
     style.configure(
         "Treeview.Heading",
@@ -260,6 +305,25 @@ def apply_theme(root: tk.Misc, palette: Palette, type_scale: Typography) -> ttk.
     )
 
     style.configure("Sep.TSeparator", background=p.card_border)
+
+    # Inside a hand-drawn box the widget must not draw a border of its own.
+    style.configure(
+        "Sketch.TEntry",
+        fieldbackground=p.field, background=p.field, foreground=p.text,
+        bordercolor=p.field, lightcolor=p.field, darkcolor=p.field,
+        insertcolor=p.text, borderwidth=0, relief="flat", padding=2,
+    )
+    style.configure(
+        "Sketch.TCombobox",
+        fieldbackground=p.field, background=p.field, foreground=p.text,
+        bordercolor=p.field, lightcolor=p.field, darkcolor=p.field,
+        arrowcolor=p.text, borderwidth=0, relief="flat", padding=2,
+    )
+    style.map(
+        "Sketch.TCombobox",
+        fieldbackground=[("readonly", p.field)],
+        background=[("readonly", p.field)],
+    )
     return style
 
 
@@ -267,25 +331,189 @@ def apply_theme(root: tk.Misc, palette: Palette, type_scale: Typography) -> ttk.
 # Containers and controls that ttk cannot express
 # --------------------------------------------------------------------------
 class Card(tk.Frame):
-    """A flat surface with a hairline border, the app's main container."""
+    """A flat surface with a border, the app's main container.
 
-    def __init__(self, master, palette: Palette, **kwargs):
+    In sketch mode the border is drawn on a canvas stacked behind the
+    content, because a hand-drawn box cannot be expressed as a widget
+    border.
+    """
+
+    def __init__(self, master, palette: Palette, amplitude: float = 1.9,
+                 overshoot: float = 4.0, line_width: float = 2.2, **kwargs):
         super().__init__(
             master,
             background=palette.card,
             highlightbackground=palette.card_border,
             highlightcolor=palette.card_border,
-            highlightthickness=1,
+            highlightthickness=0 if palette.sketch else 1,
             bd=0,
             **kwargs,
         )
         self.palette = palette
+        self._amplitude = amplitude
+        self._overshoot = overshoot
+        self._line_width = line_width
+        self._frame_canvas: tk.Canvas | None = None
+        if palette.sketch:
+            # Created first so later siblings stack above it.
+            self._frame_canvas = tk.Canvas(
+                self, background=palette.card, bd=0, highlightthickness=0, takefocus=0
+            )
+            self._frame_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+            self.bind("<Configure>", self._draw_frame)
+
+    def _draw_frame(self, _event=None) -> None:
+        if self._frame_canvas is None:
+            return
+        self._frame_canvas.delete("all")
+        width, height = self.winfo_width(), self.winfo_height()
+        if width < 8 or height < 8:
+            return
+        draw_sketch_rect(
+            self._frame_canvas, 4, 4, width - 5, height - 5,
+            seed=shape_seed(self, "card"),
+            fill=self.palette.card, outline=self.palette.card_border,
+            width=self._line_width, amplitude=self._amplitude,
+            overshoot=self._overshoot,
+        )
 
     def body(self, padx: int = 18, pady: int = 16) -> ttk.Frame:
         """An inner frame carrying the card's padding."""
+        if self.palette.sketch:
+            padx, pady = padx + 4, pady + 4
         inner = ttk.Frame(self, style="Card.TFrame")
         inner.pack(fill="both", expand=True, padx=padx, pady=pady)
         return inner
+
+
+# --------------------------------------------------------------------------
+# Hand-drawn line work
+# --------------------------------------------------------------------------
+def _jitter_rng(seed: int) -> "random.Random":
+    import random
+
+    return random.Random(seed)
+
+
+def sketch_segment(
+    x1: float, y1: float, x2: float, y2: float,
+    seed: int, amplitude: float = 1.7, step: float = 14.0,
+) -> list[float]:
+    """A straight line redrawn as if by hand.
+
+    The line is cut into short pieces and each interior joint is nudged
+    perpendicular to the direction of travel, which is what gives a stroke
+    its wobble.  The offsets come from a seeded generator so a widget looks
+    identical every time it repaints - unseeded noise would make the whole
+    interface shimmer on hover and resize.
+    """
+    import math
+
+    length = math.hypot(x2 - x1, y2 - y1)
+    if length < 1e-6:
+        return [x1, y1, x2, y2]
+
+    rng = _jitter_rng(seed)
+    pieces = max(2, int(length / step))
+    nx, ny = -(y2 - y1) / length, (x2 - x1) / length     # unit normal
+
+    points: list[float] = []
+    for index in range(pieces + 1):
+        t = index / pieces
+        # Ends stay put so corners meet; the middle wanders most.
+        taper = math.sin(math.pi * t)
+        offset = rng.uniform(-amplitude, amplitude) * taper
+        points.extend([
+            x1 + (x2 - x1) * t + nx * offset,
+            y1 + (y2 - y1) * t + ny * offset,
+        ])
+    return points
+
+
+def draw_sketch_rect(
+    canvas: tk.Canvas,
+    x1: float, y1: float, x2: float, y2: float,
+    seed: int,
+    fill: str | None = None,
+    outline: str = "#1A1A1A",
+    width: float = 1.8,
+    amplitude: float = 1.7,
+    overshoot: float = 2.5,
+    tags: str = "",
+) -> None:
+    """A rectangle drawn the way a person draws one.
+
+    Each side is a separate wobbly stroke that slightly overshoots its
+    corner, because hand-drawn boxes never close cleanly.
+    """
+    rng = _jitter_rng(seed)
+    if fill:
+        canvas.create_polygon(
+            [x1, y1, x2, y1, x2, y2, x1, y2],
+            fill=fill, outline="", tags=tags,
+        )
+    corners = [
+        (x1, y1, x2, y1),
+        (x2, y1, x2, y2),
+        (x2, y2, x1, y2),
+        (x1, y2, x1, y1),
+    ]
+    for index, (ax, ay, bx, by) in enumerate(corners):
+        over_a = rng.uniform(0, overshoot)
+        over_b = rng.uniform(0, overshoot)
+        dx, dy = bx - ax, by - ay
+        length = max((dx ** 2 + dy ** 2) ** 0.5, 1e-6)
+        ux, uy = dx / length, dy / length
+        canvas.create_line(
+            sketch_segment(
+                ax - ux * over_a, ay - uy * over_a,
+                bx + ux * over_b, by + uy * over_b,
+                seed=seed * 7 + index, amplitude=amplitude,
+            ),
+            fill=outline, width=width, capstyle="round", joinstyle="round",
+            smooth=True, tags=tags,
+        )
+
+
+def draw_sketch_line(
+    canvas: tk.Canvas, x1: float, y1: float, x2: float, y2: float,
+    seed: int, fill: str = "#1A1A1A", width: float = 1.6, tags: str = "",
+) -> None:
+    canvas.create_line(
+        sketch_segment(x1, y1, x2, y2, seed=seed),
+        fill=fill, width=width, capstyle="round", smooth=True, tags=tags,
+    )
+
+
+def draw_sketch_oval(
+    canvas: tk.Canvas, x1: float, y1: float, x2: float, y2: float,
+    seed: int, fill: str | None = None, outline: str = "#1A1A1A",
+    width: float = 1.8, tags: str = "",
+) -> None:
+    """A circle with a hand's worth of wobble in its radius."""
+    import math
+
+    rng = _jitter_rng(seed)
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    rx, ry = abs(x2 - x1) / 2, abs(y2 - y1) / 2
+    points: list[float] = []
+    steps = 22
+    for index in range(steps):
+        angle = 2 * math.pi * index / steps
+        wobble = rng.uniform(-0.9, 0.9)
+        points.extend([
+            cx + (rx + wobble) * math.cos(angle),
+            cy + (ry + wobble) * math.sin(angle),
+        ])
+    canvas.create_polygon(
+        points, fill=fill or "", outline=outline, width=width,
+        smooth=True, tags=tags,
+    )
+
+
+def shape_seed(widget: tk.Misc, role: str = "") -> int:
+    """A stable seed per widget, so a repaint reproduces the same wobble."""
+    return (hash((str(widget), role)) & 0x7FFFFFFF) or 1
 
 
 def _measured(widget: tk.Misc, dimension: str, fallback: int) -> int:
@@ -377,11 +605,20 @@ class RoundedButton(tk.Canvas):
         fill, text_colour, outline = self._colours()
         width = _measured(self, "width", 120)
         height = _measured(self, "height", 38)
-        self._shape = self.create_polygon(
-            _rounded_points(1, 1, width - 1, height - 1, self.radius),
-            smooth=True, splinesteps=24,
-            fill=fill, outline=outline or fill, width=1,
-        )
+        if self.palette.sketch:
+            draw_sketch_rect(
+                self, 3, 3, width - 3, height - 3,
+                seed=shape_seed(self, "button"),
+                fill=fill,
+                outline=self.palette.text if self._state != "disabled" else self.palette.subtle,
+                width=2.0,
+            )
+        else:
+            self._shape = self.create_polygon(
+                _rounded_points(1, 1, width - 1, height - 1, self.radius),
+                smooth=True, splinesteps=24,
+                fill=fill, outline=outline or fill, width=1,
+            )
         self._label = self.create_text(
             width / 2, height / 2 + 1, text=self._text,
             fill=text_colour, font=self._font,
@@ -451,14 +688,51 @@ class RoundedButton(tk.Canvas):
             super().__setitem__(key, value)
 
 
-class Chip(tk.Label):
-    """A small pill of colour used for the legend and for status."""
+class Chip(tk.Canvas):
+    """A small pill of colour used for the legend.
+
+    Drawn rather than labelled so the sketch theme can give it a scribbled
+    outline instead of a clean rectangle.
+    """
 
     def __init__(self, master, text: str, fill: str, foreground: str,
-                 type_scale: Typography, **kwargs):
+                 type_scale: Typography, palette: Palette = LIGHT,
+                 surface: str | None = None, **kwargs):
+        self.palette = palette
+        self._text = text
+        self._fill = fill
+        self._foreground = foreground
+        self._font = type_scale.caption
+        self._surface = surface or palette.card
+
+        width = self._font.measure(text) + (26 if palette.sketch else 18)
+        height = 28 if palette.sketch else 24
         super().__init__(
-            master, text=f" {text} ", background=fill, foreground=foreground,
-            font=type_scale.caption, padx=8, pady=3, bd=0, **kwargs,
+            master, width=width, height=height,
+            background=self._surface, bd=0, highlightthickness=0, **kwargs,
+        )
+        self.bind("<Configure>", lambda _e: self._draw())
+        self._draw()
+
+    def _draw(self) -> None:
+        self.delete("all")
+        width = _measured(self, "width", 80)
+        height = _measured(self, "height", 24)
+        if self.palette.sketch:
+            draw_sketch_rect(
+                self, 3, 3, width - 3, height - 3,
+                seed=shape_seed(self, "chip"),
+                fill=self._fill, outline=self.palette.text,
+                width=1.5, amplitude=1.1, overshoot=2.0,
+            )
+        else:
+            self.create_polygon(
+                _rounded_points(0, 0, width, height, 5),
+                smooth=True, splinesteps=16, fill=self._fill, outline=self._fill,
+            )
+        self.create_text(
+            width / 2, height / 2, text=self._text,
+            fill=self._foreground, font=self._font,
         )
 
 
@@ -491,7 +765,8 @@ class SegmentedControl(tk.Canvas):
         self._hover_index: int | None = None
 
         self._font = type_scale.body
-        width = sum(self._font.measure(label) + 34 for _, label in options) + 6
+        gap = 46 if palette.sketch else 34
+        width = sum(self._font.measure(label) + gap for _, label in options) + 6
         super().__init__(
             master, width=width, height=height,
             highlightthickness=0, bd=0, background=self._surface,
@@ -522,16 +797,30 @@ class SegmentedControl(tk.Canvas):
         p = self.palette
         width = _measured(self, "width", 260)
         height = _measured(self, "height", 34)
-        self.create_polygon(
-            _rounded_points(1, 1, width - 1, height - 1, self.radius),
-            smooth=True, splinesteps=24,
-            fill=p.field, outline=p.field_border, width=1,
-        )
+        if p.sketch:
+            draw_sketch_rect(
+                self, 3, 3, width - 3, height - 3,
+                seed=shape_seed(self, "segments"),
+                fill=p.field, outline=p.field_border, width=1.8,
+            )
+        else:
+            self.create_polygon(
+                _rounded_points(1, 1, width - 1, height - 1, self.radius),
+                smooth=True, splinesteps=24,
+                fill=p.field, outline=p.field_border, width=1,
+            )
         current = self.variable.get()
         for index, (value, label) in enumerate(self.options):
             left, right = self._bounds(index)
             selected = value == current
-            if selected:
+            if selected and p.sketch:
+                draw_sketch_rect(
+                    self, left + 4, 7, right - 4, height - 7,
+                    seed=shape_seed(self, f"seg{index}"),
+                    fill=p.accent, outline=p.accent,
+                    width=1.4, amplitude=0.8, overshoot=1.0,
+                )
+            elif selected:
                 self.create_polygon(
                     _rounded_points(left, 3, right, height - 3, self.radius - 2),
                     smooth=True, splinesteps=24, fill=p.accent, outline=p.accent,
@@ -617,18 +906,31 @@ class ToggleSwitch(tk.Canvas):
         top = (height - self._track_height) / 2
         bottom = top + self._track_height
 
-        self.create_polygon(
-            _rounded_points(1, top, self._track_width, bottom, self._track_height / 2),
-            smooth=True, splinesteps=24,
-            fill=p.accent if on else p.field_border,
-            outline=p.accent if on else p.field_border,
-        )
         knob = self._track_height - 6
         knob_left = (self._track_width - knob - 3) if on else 4
-        self.create_oval(
-            knob_left, top + 3, knob_left + knob, top + 3 + knob,
-            fill="#FFFFFF", outline="",
-        )
+        if p.sketch:
+            draw_sketch_rect(
+                self, 2, top, self._track_width - 1, bottom,
+                seed=shape_seed(self, "track"),
+                fill=p.accent if on else p.card,
+                outline=p.text, width=1.8, amplitude=1.2, overshoot=1.5,
+            )
+            draw_sketch_oval(
+                self, knob_left, top + 3, knob_left + knob, top + 3 + knob,
+                seed=shape_seed(self, "knob"),
+                fill=p.card if on else p.text, outline=p.text, width=1.6,
+            )
+        else:
+            self.create_polygon(
+                _rounded_points(1, top, self._track_width, bottom, self._track_height / 2),
+                smooth=True, splinesteps=24,
+                fill=p.accent if on else p.field_border,
+                outline=p.accent if on else p.field_border,
+            )
+            self.create_oval(
+                knob_left, top + 3, knob_left + knob, top + 3 + knob,
+                fill="#FFFFFF", outline="",
+            )
         if self.text:
             self.create_text(
                 self._track_width + 8, height / 2,
@@ -823,3 +1125,62 @@ class ScrollableFrame(tk.Frame):
         else:
             step = -1 if event.delta > 0 else 1
         self.canvas.yview_scroll(step, "units")
+
+
+class SketchSeparator(tk.Canvas):
+    """A horizontal rule with a hand's wobble in it."""
+
+    def __init__(self, master, palette: Palette, height: int = 12, **kwargs):
+        super().__init__(
+            master, height=height, background=palette.card,
+            bd=0, highlightthickness=0, takefocus=0, **kwargs,
+        )
+        self.palette = palette
+        self.bind("<Configure>", lambda _e: self._draw())
+
+    def _draw(self) -> None:
+        self.delete("all")
+        width = _measured(self, "width", 400)
+        height = _measured(self, "height", 12)
+        draw_sketch_line(
+            self, 2, height / 2, width - 2, height / 2,
+            seed=shape_seed(self, "rule"),
+            fill=self.palette.card_border, width=1.8,
+        )
+
+
+def separator(master, palette: Palette, style: str = "Sep.TSeparator"):
+    """A rule that matches the active theme."""
+    if palette.sketch:
+        return SketchSeparator(master, palette)
+    return ttk.Separator(master, orient="horizontal", style=style)
+
+
+def framed_entry(master, palette: Palette, textvariable, type_scale: Typography,
+                 values: list[str] | None = None, readonly: bool = False):
+    """An entry or combobox, boxed by hand when the sketch theme is on.
+
+    Returns ``(outer, inner)``: grid the outer widget, read state from the
+    inner one.  ttk cannot draw a wobbly border, so in sketch mode the
+    control loses its own border and sits inside a drawn box instead.
+    """
+    if values is not None:
+        make = lambda parent, style: ttk.Combobox(  # noqa: E731
+            parent, textvariable=textvariable, values=values,
+            state="readonly", style=style,
+        )
+    else:
+        make = lambda parent, style: ttk.Entry(  # noqa: E731
+            parent, textvariable=textvariable, style=style,
+        )
+
+    if not palette.sketch:
+        widget = make(master, "TCombobox" if values is not None else "TEntry")
+        return widget, widget
+
+    box = Card(master, palette, amplitude=1.0, overshoot=1.8, line_width=1.8)
+    inner = make(box, "Sketch.TCombobox" if values is not None else "Sketch.TEntry")
+    # The hand-drawn border is inset 4px and wanders about a pixel either
+    # way, so the content has to start clear of it or the line crosses text.
+    inner.pack(fill="both", expand=True, padx=10, pady=8)
+    return box, inner

@@ -12,3 +12,6 @@ scipy>=1.10
 # python.org installers. On Linux install it from your package manager:
 #   Debian/Ubuntu: sudo apt install python3-tk
 #   Fedora:        sudo dnf install python3-tkinter
+
+# The sketch theme's handwriting fonts are bundled in
+# bank_reconciliation/assets/fonts/ (SIL Open Font License) - nothing to install.

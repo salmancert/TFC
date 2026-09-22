@@ -328,3 +328,70 @@ def test_switching_layout_modes_keeps_the_window_usable(workbook):
         assert str(app.statement_combo["state"]) == "readonly"
     finally:
         app.close()
+
+
+# ------------------------------------------------------------------- theming
+def test_the_theme_cycle_covers_every_palette():
+    # theme.py is the one module that needs Tk at import time.
+    pytest.importorskip("tkinter", reason="the design system needs tkinter")
+    from bank_reconciliation.theme import PALETTES
+
+    from bank_reconciliation.gui import ReconcilerApp
+
+    assert set(ReconcilerApp.THEME_ORDER) == set(PALETTES)
+    assert ReconcilerApp.THEME_ORDER[0] == "sketch", "the sketch look is the default"
+
+
+@tk_only
+def test_the_app_starts_hand_drawn_and_cycles_through_the_themes(workbook):
+    from bank_reconciliation.gui import ReconcilerApp
+
+    app = ReconcilerApp()
+    try:
+        assert app.theme_name.get() == "sketch"
+        assert app.palette.sketch is True
+
+        seen = [app.theme_name.get()]
+        for _ in range(len(ReconcilerApp.THEME_ORDER)):
+            app._toggle_theme()
+            app.root.update()
+            seen.append(app.theme_name.get())
+        # A full cycle returns to where it started, visiting each palette once.
+        assert seen[-1] == "sketch"
+        assert set(seen) == set(ReconcilerApp.THEME_ORDER)
+    finally:
+        app.close()
+
+
+@tk_only
+def test_switching_theme_keeps_the_results_on_screen(pack_workbook, tmp_path):
+    """Rebuilding the window in a new palette must not lose what was found."""
+    import time
+
+    from bank_reconciliation.gui import ReconcilerApp
+
+    path, truths = pack_workbook
+    app = ReconcilerApp()
+    try:
+        app.statement_path.set(path)
+        app._inspect(path)
+        app.output_path.set(str(tmp_path / "themed.xlsx"))
+        app.run_button.invoke()
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            app.root.update()
+            if str(app.run_button["state"]) == "normal" and app.tree.get_children():
+                break
+            time.sleep(0.05)
+
+        before = [app.tree.item(i)["values"] for i in app.tree.get_children()]
+        assert before
+
+        app._toggle_theme()
+        app.root.update()
+        after = [app.tree.item(i)["values"] for i in app.tree.get_children()]
+        assert after == before
+        # The sheet list survives the rebuild too.
+        assert len(app.sheet_tree.get_children()) == len(truths)
+    finally:
+        app.close()

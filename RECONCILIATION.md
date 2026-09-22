@@ -67,11 +67,35 @@ is always reachable.
 - **Layout** is a segmented picker, set for you from what is in the file.
 - **Matching rules** start collapsed, since the defaults suit most
   statements. Open them only when you want to change something.
-- **Light and dark** themes; the toggle sits in the top right.
+- **Three themes**, cycled from the button in the top right:
+  **Sketch** (the default, hand-drawn), **Light** and **Dark**.
 
-The look is built from the standard library alone - a flat restyle of ttk
-plus a few hand-drawn controls in `bank_reconciliation/theme.py` - so there
-is no extra dependency to install and no theme package to keep in step.
+The look is built from the standard library alone - a restyle of ttk plus
+hand-drawn controls in `bank_reconciliation/theme.py` - so there is no
+extra dependency to install and no theme package to keep in step.
+
+### The sketch theme
+
+Cards, buttons, pickers, switches, chips and rules are drawn stroke by
+stroke on a canvas: each line is cut into short pieces whose joints are
+nudged sideways, and each box overshoots its corners, the way a hand-drawn
+box never quite closes. The wobble comes from a generator seeded per
+widget, so a control looks identical every time it repaints - unseeded
+noise would make the whole window shimmer on hover and resize.
+
+Prefer the clean look for day-to-day work? Press the theme button twice.
+The choice is per-session; nothing about the reconciliation changes.
+
+**Fonts.** Two handwriting faces ship with the app, both under the SIL
+Open Font License: **Patrick Hand** and **Comic Neue**
+(`bank_reconciliation/assets/fonts/`, see `NOTICE.md` there). They are
+registered for the running process where the platform allows it, and
+otherwise installed into your own font directory on first use.
+
+The real xkcd face ("xkcd Script", and the derived "Humor Sans") is
+licensed **CC BY-NC** - non-commercial only - so it is deliberately *not*
+bundled. If it is already installed on your machine the sketch theme picks
+it up automatically, ahead of the bundled fonts.
 
 ## Reconciliation packs (one sheet per bank)
 

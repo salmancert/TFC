@@ -183,7 +183,9 @@ def _open_in_file_manager(path: str) -> None:
 class ReconcilerApp:
     """The Tk window."""
 
-    def __init__(self, master=None, theme: str = "light") -> None:
+    THEME_ORDER = ("sketch", "light", "dark")
+
+    def __init__(self, master=None, theme: str = "sketch") -> None:
         import tkinter as tk
         from tkinter import ttk
 
@@ -193,12 +195,12 @@ class ReconcilerApp:
         self.ttk = ttk
         self.root = master or tk.Tk()
         self.root.title("Bank Reconciliation")
-        self.root.minsize(880, 700)
-        self.root.geometry("980x860")
+        self.root.minsize(900, 680)
+        self.root.geometry("1020x900")
 
         self.theme_name = tk.StringVar(value=theme)
         self.palette = PALETTES[theme]
-        self.type_scale = Typography.build(self.root)
+        self.type_scale = Typography.build(self.root, sketch=self.palette.sketch)
 
         self.statement_path = tk.StringVar()
         self.ledger_path = tk.StringVar()
@@ -238,7 +240,7 @@ class ReconcilerApp:
         from .theme import (
             AutoHideScrollbar, Card, Chip, CollapsibleCard, RoundedButton,
             ScrollableFrame, SegmentedControl, ToggleSwitch, apply_theme,
-            flatten_scrollbar,
+            flatten_scrollbar, framed_entry, separator,
         )
 
         tk, ttk = self.tk, self.ttk
@@ -262,9 +264,11 @@ class ReconcilerApp:
             style="Subtitle.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
+        order = self.THEME_ORDER
+        following = order[(order.index(p.name) + 1) % len(order)] if p.name in order else order[0]
         self.theme_button = RoundedButton(
             header,
-            text="Dark" if p.name == "light" else "Light",
+            text=following.title(),
             command=self._toggle_theme,
             palette=p, type_scale=t, kind="ghost", height=32,
             min_width=86, surface=p.canvas,
@@ -294,9 +298,8 @@ class ReconcilerApp:
         file_row = ttk.Frame(source, style="Card.TFrame")
         file_row.grid(row=2, column=0, sticky="ew")
         file_row.columnconfigure(0, weight=1)
-        ttk.Entry(file_row, textvariable=self.statement_path).grid(
-            row=0, column=0, sticky="ew"
-        )
+        path_box, _ = framed_entry(file_row, p, self.statement_path, t)
+        path_box.grid(row=0, column=0, sticky="ew")
         RoundedButton(
             file_row, text="Browse", command=self._browse_statement,
             palette=p, type_scale=t, kind="ghost", height=34, surface=p.card,
@@ -306,9 +309,7 @@ class ReconcilerApp:
             row=3, column=0, sticky="w", pady=(6, 0)
         )
 
-        ttk.Separator(source, orient="horizontal", style="Sep.TSeparator").grid(
-            row=4, column=0, sticky="ew", pady=14
-        )
+        separator(source, p).grid(row=4, column=0, sticky="ew", pady=12)
 
         ttk.Label(source, text="LAYOUT", style="FieldLabel.TLabel").grid(
             row=5, column=0, sticky="w", pady=(0, 5)
@@ -318,6 +319,7 @@ class ReconcilerApp:
             variable=self.mode,
             options=[("pack", "One sheet per bank"), ("sheets", "Statement + ledger")],
             palette=p, type_scale=t, command=self._apply_mode, surface=p.card,
+            height=42 if p.sketch else 34,
         ).grid(row=6, column=0, sticky="w")
         ttk.Label(
             source, textvariable=self.layout_caption, style="Caption.TLabel"
@@ -326,9 +328,7 @@ class ReconcilerApp:
         # pack mode: the per-sheet findings
         self.pack_frame = ttk.Frame(source, style="Card.TFrame")
         self.pack_frame.columnconfigure(0, weight=1)
-        tree_wrap = tk.Frame(
-            self.pack_frame, background=p.card_border, bd=0, highlightthickness=0
-        )
+        tree_wrap = Card(self.pack_frame, p)
         tree_wrap.grid(row=1, column=0, sticky="ew")
         tree_wrap.columnconfigure(0, weight=1)
         self.sheet_tree = ttk.Treeview(
@@ -339,12 +339,12 @@ class ReconcilerApp:
         self.sheet_tree.heading("found", text="WHAT WAS FOUND", anchor="w")
         self.sheet_tree.column("sheet", width=190, anchor="w", stretch=False)
         self.sheet_tree.column("found", width=470, anchor="w")
-        self.sheet_tree.grid(row=0, column=0, sticky="ew", padx=1, pady=1)
+        self.sheet_tree.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
         sheet_scroll = AutoHideScrollbar(
             tree_wrap, orient="vertical", command=self.sheet_tree.yview,
             style="Flat.Vertical.TScrollbar",
         )
-        sheet_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 1), pady=1)
+        sheet_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 6), pady=6)
         self.sheet_tree.configure(yscrollcommand=sheet_scroll.set)
         self.sheet_tree.tag_configure("odd", background=p.stripe)
         self.sheet_tree.tag_configure("skip", foreground=p.subtle)
@@ -365,10 +365,10 @@ class ReconcilerApp:
         ttk.Label(statement_box, text="Bank statement sheet", style="FieldLabel.TLabel").grid(
             row=0, column=0, sticky="w", pady=(0, 3)
         )
-        self.statement_combo = ttk.Combobox(
-            statement_box, textvariable=self.statement_sheet, state="readonly"
+        statement_widget, self.statement_combo = framed_entry(
+            statement_box, p, self.statement_sheet, t, values=[]
         )
-        self.statement_combo.grid(row=1, column=0, sticky="ew")
+        statement_widget.grid(row=1, column=0, sticky="ew")
 
         ledger_box = ttk.Frame(self.sheets_frame, style="Card.TFrame")
         ledger_box.grid(row=0, column=1, sticky="ew", padx=(8, 0))
@@ -376,10 +376,10 @@ class ReconcilerApp:
         ttk.Label(ledger_box, text="Ledger sheet", style="FieldLabel.TLabel").grid(
             row=0, column=0, sticky="w", pady=(0, 3)
         )
-        self.ledger_combo = ttk.Combobox(
-            ledger_box, textvariable=self.ledger_sheet, state="readonly"
+        ledger_widget, self.ledger_combo = framed_entry(
+            ledger_box, p, self.ledger_sheet, t, values=[]
         )
-        self.ledger_combo.grid(row=1, column=0, sticky="ew")
+        ledger_widget.grid(row=1, column=0, sticky="ew")
 
         self.separate_check = ToggleSwitch(
             self.sheets_frame, variable=self.separate_ledger_file,
@@ -391,7 +391,7 @@ class ReconcilerApp:
         self.ledger_label = ttk.Label(
             self.sheets_frame, text="Ledger file", style="FieldLabel.TLabel"
         )
-        self.ledger_entry = ttk.Entry(self.sheets_frame, textvariable=self.ledger_path)
+        self.ledger_entry, _ = framed_entry(self.sheets_frame, p, self.ledger_path, t)
         self.ledger_button = RoundedButton(
             self.sheets_frame, text="Browse", command=self._browse_ledger,
             palette=p, type_scale=t, kind="ghost", height=34, surface=p.card,
@@ -417,7 +417,8 @@ class ReconcilerApp:
             ttk.Label(box, text=caption, style="FieldLabel.TLabel").grid(
                 row=0, column=0, sticky="w", pady=(0, 3)
             )
-            ttk.Entry(box, textvariable=variable).grid(row=1, column=0, sticky="ew")
+            entry, _ = framed_entry(box, p, variable, t)
+            entry.grid(row=1, column=0, sticky="ew")
             return box
 
         field(rules, 0, 0, "AMOUNT TOLERANCE", self.amount_tolerance, (0, 8))
@@ -429,10 +430,10 @@ class ReconcilerApp:
         ttk.Label(sign_box, text="LEDGER SIGNS", style="FieldLabel.TLabel").grid(
             row=0, column=0, sticky="w", pady=(0, 3)
         )
-        ttk.Combobox(
-            sign_box, textvariable=self.sign_convention, state="readonly",
-            values=("auto", "same", "flip"),
-        ).grid(row=1, column=0, sticky="ew")
+        sign_widget, _ = framed_entry(
+            sign_box, p, self.sign_convention, t, values=["auto", "same", "flip"]
+        )
+        sign_widget.grid(row=1, column=0, sticky="ew")
 
         field(rules, 1, 0, "AUTO-MATCH ABOVE", self.match_threshold, (0, 8))
         field(rules, 1, 1, "REVIEW ABOVE", self.review_threshold, (8, 8))
@@ -492,13 +493,11 @@ class ReconcilerApp:
             ("Needs review", p.warn_fill, p.warn),
             ("Unmatched", p.bad_fill, p.bad),
         )):
-            Chip(legend, label, fill, foreground, t).grid(
+            Chip(legend, label, fill, foreground, t, palette=p, surface=p.card).grid(
                 row=0, column=index, padx=(0, 6)
             )
 
-        result_wrap = tk.Frame(
-            result, background=p.card_border, bd=0, highlightthickness=0
-        )
+        result_wrap = Card(result, p)
         result_wrap.grid(row=3, column=0, sticky="nsew")
         result_wrap.columnconfigure(0, weight=1)
         result_wrap.rowconfigure(0, weight=1)
@@ -509,12 +508,12 @@ class ReconcilerApp:
         self.tree.heading("value", text="RESULT", anchor="w")
         self.tree.column("metric", width=300, anchor="w", stretch=False)
         self.tree.column("value", width=430, anchor="w")
-        self.tree.grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
         result_scroll = AutoHideScrollbar(
             result_wrap, orient="vertical", command=self.tree.yview,
             style="Flat.Vertical.TScrollbar",
         )
-        result_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 1), pady=1)
+        result_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 6), pady=6)
         self.tree.configure(yscrollcommand=result_scroll.set)
         self.tree.tag_configure("odd", background=p.stripe)
         self.tree.tag_configure("total", font=t.body_bold)
@@ -530,11 +529,15 @@ class ReconcilerApp:
 
     # ------------------------------------------------------------- theming
     def _toggle_theme(self) -> None:
-        """Swap light and dark, rebuilding the window in the new palette."""
-        from .theme import PALETTES
+        """Cycle sketch -> light -> dark, rebuilding in the new palette."""
+        from .theme import PALETTES, Typography
 
-        self.theme_name.set("dark" if self.theme_name.get() == "light" else "light")
-        self.palette = PALETTES[self.theme_name.get()]
+        order = self.THEME_ORDER
+        current = self.theme_name.get()
+        nxt = order[(order.index(current) + 1) % len(order)] if current in order else order[0]
+        self.theme_name.set(nxt)
+        self.palette = PALETTES[nxt]
+        self.type_scale = Typography.build(self.root, sketch=self.palette.sketch)
         self._rebuild()
 
     def _rebuild(self) -> None:

@@ -1,0 +1,6 @@
+# Dependencies for the handwriting-to-font tool (python -m handfont).
+fonttools>=4.40      # writes the TrueType tables
+numpy>=1.24
+pillow>=10.0         # renders the template, reads the scans
+potracer>=0.0.4      # pure-python potrace: bitmap -> outlines
+scipy>=1.10          # connected components and filtering

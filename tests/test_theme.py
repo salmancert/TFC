@@ -245,10 +245,15 @@ def sketch_scale(tk_root):
 
 @tk_only
 def test_sketch_typography_uses_a_handwriting_face(tk_root, sketch_scale):
-    from bank_reconciliation.fonts import SKETCH_FAMILIES
+    from bank_reconciliation.fonts import SKETCH_FAMILIES, preferred_family
 
     family = sketch_scale.body.actual("family")
-    assert family.lower() in {name.lower() for name in SKETCH_FAMILIES}, family
+    acceptable = {name.lower() for name in SKETCH_FAMILIES}
+    # A font the user made from their own handwriting outranks the list.
+    personal = preferred_family()
+    if personal:
+        acceptable.add(personal.lower())
+    assert family.lower() in acceptable, family
 
 
 @tk_only

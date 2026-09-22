@@ -51,3 +51,19 @@ python -m bank_reconciliation pack.xlsx            # one sheet per bank
 ```
 
 See **[RECONCILIATION.md](RECONCILIATION.md)** for the full guide.
+
+---
+
+# Handwriting to font
+
+Print a template, fill it in with a pen, scan it, and get a TrueType font
+made from your own handwriting — yours outright, with no licence to worry
+about.
+
+```bash
+pip install -r requirements-handfont.txt
+python -m handfont template -o template.pdf              # print and fill in
+python -m handfont build scans/*.jpg -n "My Hand" --install
+```
+
+See **[HANDWRITING.md](HANDWRITING.md)** for the full guide.

@@ -119,6 +119,22 @@ def register_bundled_fonts(root) -> None:
             _install_for_user_linux(path)
 
 
+def preferred_family() -> str | None:
+    """The user's own handwriting font, if they have made one.
+
+    ``handfont build --install`` records the family name it installed, and
+    the sketch theme puts that ahead of everything else - your own hand is
+    always the better answer than a bundled approximation.
+    """
+    try:
+        from handfont.install import read_preferred_family
+
+        return read_preferred_family()
+    except Exception as error:  # noqa: BLE001 - the tool is optional
+        LOGGER.debug("no personal font preference available: %s", error)
+        return None
+
+
 def resolve_sketch_family(root) -> tuple[str, bool]:
     """Pick the handwriting family to draw with.
 
@@ -128,6 +144,11 @@ def resolve_sketch_family(root) -> tuple[str, bool]:
     """
     register_bundled_fonts(root)
     available = installed_families(root)
+
+    personal = preferred_family()
+    if personal and personal.lower() in available:
+        return personal, True
+
     for family in SKETCH_FAMILIES:
         if family.lower() in available:
             return family, True

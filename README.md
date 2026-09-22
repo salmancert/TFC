@@ -30,3 +30,40 @@ This project forecasts travel costs using a hybrid model of Prophet and LSTM. It
 
 3.  **Access the application:**
     Open your web browser and go to `http://127.0.0.1:5000`.
+
+---
+
+# Bank Reconciliation
+
+This repository also contains a machine-learning bank reconciliation tool
+that matches a bank statement against an internal ledger and writes back a
+colour-coded copy of your spreadsheet.
+
+It handles both layouts: a statement sheet and a ledger sheet to compare,
+or a reconciliation pack with one sheet per bank where each sheet holds the
+open ledger items and the open bank items stacked together.
+
+```bash
+pip install -r requirements-reconciliation.txt
+python reconcile_gui.py                            # desktop app
+python -m bank_reconciliation statement.xlsx       # command line
+python -m bank_reconciliation pack.xlsx            # one sheet per bank
+```
+
+See **[RECONCILIATION.md](RECONCILIATION.md)** for the full guide.
+
+---
+
+# Handwriting to font
+
+Print a template, fill it in with a pen, scan it, and get a TrueType font
+made from your own handwriting — yours outright, with no licence to worry
+about.
+
+```bash
+pip install -r requirements-handfont.txt
+python -m handfont template -o template.pdf              # print and fill in
+python -m handfont build scans/*.jpg -n "My Hand" --install
+```
+
+See **[HANDWRITING.md](HANDWRITING.md)** for the full guide.
